@@ -72,10 +72,16 @@ struct SettingsView: View {
         }
         .navigationDestination(for: SettingsDestination.self) { dest in
             switch dest {
-            case .textEngine:
-                TextEngineSettingsView(client: auth.client)
-            default:
-                SettingsSectionPlaceholder(destination: dest)
+            case .textEngine:    TextEngineSettingsView(client: auth.client)
+            case .imageEngine:   ImageEngineSettingsView(client: auth.client)
+            case .memoryEngine:  MemoryEngineSettingsView(client: auth.client)
+            case .voice:         VoiceSettingsView(client: auth.client)
+            case .profile:       ProfileView(client: auth.client)
+            case .privacy:       PrivacyAndDataView(client: auth.client).environment(auth)
+            case .roleplay:      RoleplaySettingsView(client: auth.client)
+            case .writingStyles: WritingStylesSettingsView(client: auth.client)
+            case .grammar:       GrammarSettingsView(client: auth.client)
+            case .about:         SettingsSectionPlaceholder(destination: dest)
             }
         }
     }
