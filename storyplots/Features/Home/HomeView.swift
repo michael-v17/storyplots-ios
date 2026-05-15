@@ -48,10 +48,12 @@ struct HomeView: View {
                 } else {
                     ForEach(model.conversations) { conv in
                         NavigationLink {
-                            ChatPlaceholderView(
+                            ChatView(
                                 conversationID: conv.id,
-                                characterName: conv.characterName,
-                                accent: model.accent(for: conv)
+                                character: conv.character_id.flatMap { model.charactersByID[$0] },
+                                accent: model.accent(for: conv),
+                                avatarURL: model.avatarURL(for: conv),
+                                client: model.client
                             )
                         } label: {
                             ConversationCardView(

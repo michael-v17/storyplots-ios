@@ -22,7 +22,7 @@ final class HomeViewModel {
     /// `character_id` → `Character` snapshot used to render accent + avatar.
     private(set) var charactersByID: [String: Character] = [:]
 
-    private let client: SupabaseClient
+    let client: SupabaseClient
 
     init(client: SupabaseClient) {
         self.client = client
