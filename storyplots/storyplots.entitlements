@@ -2,9 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>com.apple.developer.applesignin</key>
-	<array>
-		<string>Default</string>
-	</array>
+	<!--
+	  Sign in with Apple temporarily disabled while signing with a Personal
+	  Apple Team — Personal teams cannot claim com.apple.developer.applesignin.
+	  Re-enable by uncommenting the array below once the project is signed
+	  with a paid Apple Developer account that includes the Sign in with
+	  Apple capability for com.tecnologiasvm.storyplots.
+
+	  <key>com.apple.developer.applesignin</key>
+	  <array>
+	    <string>Default</string>
+	  </array>
+	-->
 </dict>
 </plist>
