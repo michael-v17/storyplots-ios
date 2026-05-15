@@ -410,6 +410,7 @@
 				DEVELOPMENT_TEAM = 7RYJM44SBW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = StoryPlots;
 				INFOPLIST_KEY_SupabaseAnonKey = "sb_publishable_PfR-7qHZ568ySKYdOujSsQ_Z1YOFLWC";
 				INFOPLIST_KEY_SupabaseURL = "https://mhdekknjaigoeuzrriey.supabase.co";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -444,6 +445,7 @@
 				DEVELOPMENT_TEAM = 7RYJM44SBW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = StoryPlots;
 				INFOPLIST_KEY_SupabaseAnonKey = "sb_publishable_PfR-7qHZ568ySKYdOujSsQ_Z1YOFLWC";
 				INFOPLIST_KEY_SupabaseURL = "https://mhdekknjaigoeuzrriey.supabase.co";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
