@@ -35,7 +35,7 @@ struct PeopleView: View {
         .background(Theme.Color.bg)
         .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .searchable(text: Binding(
             get: { model.searchText },
             set: { model.searchText = $0 }
@@ -52,7 +52,23 @@ struct PeopleView: View {
                 Task { await model.load() }
             }
         }
+        .sheet(isPresented: $showImportSheet) {
+            CharacterImportSheet(client: client) { _ in
+                Task { await model.load() }
+            }
+        }
+        .navigationDestination(for: Character.self) { character in
+            CharacterDetailView(
+                character: character,
+                accent: model.accent(for: character),
+                avatarRef: model.avatarRef(for: character),
+                client: client,
+                onChanged: { Task { await model.load() } }
+            )
+        }
     }
+
+    @State private var showImportSheet: Bool = false
 
     private var gridState: some View {
         ScrollView {
@@ -61,7 +77,8 @@ struct PeopleView: View {
                     characterCount: model.characters.count,
                     filter: $filter,
                     onCreate: { showCreateSheet = true },
-                    onGenerate: { showGenerateSheet = true }
+                    onGenerate: { showGenerateSheet = true },
+                    onImport: { showImportSheet = true }
                 )
                 if model.filtered.isEmpty {
                     emptyState
@@ -69,7 +86,7 @@ struct PeopleView: View {
                     LazyVGrid(columns: columns, spacing: Theme.Spacing.s3) {
                         ForEach(model.filtered) { character in
                             NavigationLink {
-                                CharacterDetailView(
+                                CharacterLandingView(
                                     character: character,
                                     accent: model.accent(for: character),
                                     avatarRef: model.avatarRef(for: character),
@@ -88,6 +105,11 @@ struct PeopleView: View {
                                 .matchedTransitionSource(id: "char-\(character.id)", in: transitionNamespace)
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                NavigationLink(value: character) {
+                                    Label("Edit character", systemImage: "pencil")
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, Theme.Spacing.s4)
@@ -116,7 +138,8 @@ struct PeopleView: View {
                     characterCount: 0,
                     filter: $filter,
                     onCreate: { showCreateSheet = true },
-                    onGenerate: { showGenerateSheet = true }
+                    onGenerate: { showGenerateSheet = true },
+                    onImport: { showImportSheet = true }
                 )
                 LazyVGrid(columns: columns, spacing: Theme.Spacing.s3) {
                     ForEach(0..<6, id: \.self) { _ in

@@ -1,124 +1,147 @@
-# Handoff — autonomous + iterative polish run [2026-05-15]
+# Handoff — autonomous Fase 11 run [2026-05-15]
 
-**Status**: 12 of 13 polish items shipped after the creator's audit feedback.
-**Last commit**: `7978188` feat(polish): ChatView nav bar, accent chips, image-gen shimmer, persona avatar.
-**Wall-clock used this round**: ~30m. Total session ~2h.
+**Status**: Fase 11 shipped (12 of 16 sub-tasks fully done, Task 8a partial).
+**Phase**: 11 — IA Realignment + Missing Surfaces
+**Last commit**: pending — see `git log` after the wrap-up commit lands.
+**Wall-clock used**: ~50 min.
 
 ---
 
 ## Background — what triggered this round
 
-After the autonomous run that shipped phases 0–11 (commits `1ff3e21`..`d9ed5d1`), the creator flagged three concrete visual issues from screenshots:
-
-1. "Negro raro" at the top of People (Image #2) — brand gradient cut at the safe-area boundary.
-2. iOS-default-blue icons in Settings rows clashing with the amber brand.
-3. No wordmark visible anywhere except the SignIn screen; nav-bar treatment in Settings felt "básica".
-
-We audited, planned 5 tandas (13 items), and executed in sequence — `8fa1d13` and `7978188` cover the changes.
-
----
-
-## What landed this round
-
-### Tanda 1 — Eliminate visual jank (commit `8fa1d13`)
-
-| ID | Item | Status |
-|---|---|---|
-| T1.1 | Custom `SettingsHeaderView` with brand-gradient wash | ✅ |
-| T1.2 | `BrandTopWash` ViewModifier replaces per-screen gradients — gradient now flows through the safe area on all three tabs | ✅ |
-| T1.3 | Settings Form rows use a `brandLabel` helper that tints SF Symbol icons amber instead of the iOS default blue | ✅ |
-| T1.4 | Home / People content gets 100pt bottom padding so the last card sits cleanly above the floating tab bar | ✅ |
-
-### Tanda 2 — Wordmark visible + About real (commit `8fa1d13`)
-
-| ID | Item | Status |
-|---|---|---|
-| T2.5 | `AboutView` real — large wordmark, version + build, tagline, info cards | ✅ |
-| T2.6 | Mini wordmark in the Settings header (top-right) | ✅ |
-| T2.7 | `LaunchScreen` with wordmark | ⛔ deferred — needs Xcode storyboard / Info.plist UI work, not text-editable cleanly |
-
-### Tanda 3 — Chat polish (commit `7978188`)
-
-| ID | Item | Status |
-|---|---|---|
-| T3.8 | ChatView nav bar with avatar + name + tagline / "typing…" stack | ✅ |
-| T3.9 | Composer chips integrate the character accent always (subtle fill + border, intensified when active) | ✅ |
-| T3.10 | Shimmer "Painting…" placeholder card in the image rail during `/messages/{id}/images` round-trip | ✅ |
-| T3.11 | `TabView.tint(Theme.Color.brand1)` so selected tab item picks up amber | ✅ |
-
-### Tanda 4 — Home greeting avatar (commit `7978188`)
-
-| ID | Item | Status |
-|---|---|---|
-| T4.12 | HomeHeaderView avatar resolves `user_personas.photo_ref` via the signed-URL helper; falls back to initials when null | ✅ |
-
-### Tanda 5 — Accessibility checks (manual verification this round)
-
-| ID | Item | Status |
-|---|---|---|
-| T5.13 | Manual a11y verification: Increase Contrast on (chat surface stays legible, accents intensify cleanly), Dynamic Type accessibility-large (text scales correctly, layout reflows without clipping). Reduce Transparency could not be toggled via simctl. Formal SnapshotTest harness (with swift-snapshot-testing SPM dep) is deferred to a future cycle. | ⚙️ partial |
+The creator updated the seed (commit `4ba72df`) to redefine Fase 11 as
+**IA Realignment + Missing Surfaces** and added PersonaLLM consensus
+(commit `0b3b067`) for look-vs-feel. The previous "Fase 11 polish"
+work shipped earlier (commits `8fa1d13` and `7978188`) is unchanged;
+this run rebuilt the top-level information architecture and added the
+six surfaces the seed promised but never landed.
 
 ---
 
-## Commits this round
+## What landed this run
 
-- `8fa1d13` fix(polish): brand wash extends through safe area + Settings header + amber icons
-- `7978188` feat(polish): ChatView nav bar, accent chips, image-gen shimmer, persona avatar
+### Architectural rewire — sidebar replaces TabView
+
+- `NavigationSplitView`-based `AppShellView` is the new app root.
+- Sidebar carries: permanent wordmark header, three top-level destinations
+  (Home / Characters / Gallery), grouped Recent Chats (one row per
+  character with chat count, sorted by latest activity), and a footer
+  with the persona card, Settings, and Sign out.
+- Tap a Recent row → pushes `CharacterChatsView` (list of that character's
+  chats) onto the detail stack and auto-dismisses the drawer.
+- `MainTabView.swift` deleted; `RootView` now mounts `AppShellView`.
+
+### Home rebuild — wordmark + recents + grammar + cycler + search
+
+- Wordmark image now sits prominently in Home content (above greeting).
+- Horizontal Recent Characters strip + tappable Grammar widget +
+  HomeNudge when empty.
+- Three-mode layout cycler (grid / circles / list), persisted via
+  `@SceneStorage("home.layoutMode")` — visible only when ≥3 characters.
+- `.searchable` over name + tagline + scenario.
+- HomeViewModel reoriented to load characters + persona + grammar
+  snapshot in parallel.
+
+### Six new surfaces
+
+- **GalleryView** (top-level destination) — grid of `generated_images`
+  with viewer + delete via backend.
+- **GrammarDashboardView** — brand-gradient accuracy ring, top-3 issue
+  categories, recent 20 corrections, "Run insights now" button.
+- **CharacterImportSheet** + `CharacterCardParser` — PNG `tEXt` chunk
+  parsing (v1/v2/v3 via `CGImageSource` + base64 JSON), refine via
+  `POST /character-refine`, save to `characters` table.
+- **VisualRoleplaySettingsView**, **PromptEditorView**,
+  **MemorySettingsView** — three new sub-screens persisted to
+  `users.preferences` JSONB via the now-internal `PreferenceFamilyStore`.
+
+### New mid-flow screens
+
+- **CharacterLandingView** — pre-chat opener for tap-from-Characters.
+  Shows hero avatar, name, tagline, mode pill, and either a scenario
+  card (creates a new conversation seeded with the scenario as the
+  first assistant message) or an empty-state CTA.
+- **CharacterChatsView** — destination from sidebar Recent row, lists
+  all conversations for a single character.
+
+### Refinements baked in (Update 2.C)
+
+- Section labels use small-caps + tracking everywhere
+  ("RECENT", "YOUR CAST", "ACCURACY", "TOP ISSUES").
+- Image-generation loading copy: **"Generating… · Feel free to keep
+  chatting"** replaces the old "Painting…" line.
+- Assistant bubble gains a `< n/total >` variant pill at the top-leading
+  corner (in addition to the existing dots indicator).
+- Settings now has an "Experience" section with rows for Visual roleplay,
+  Prompt editor, Memory (user-facing). Grammar is split into "Grammar
+  dashboard" + "Grammar settings".
+- `Character` now conforms to `Hashable` (via `id`) so destinations can
+  pass it directly.
 
 ---
 
-## Visual delta (creator's eye)
+## Build + run
 
-Before this round (the creator's screenshots):
-- People top → a clearly-cut darker band ate ~50pt above the header.
-- Settings top → completely black above the hero card; rows in blue icons.
-- No wordmark visible anywhere in-app.
-
-After this round:
-- All three tab tops carry the same brand wash that bleeds smoothly into the status bar.
-- Settings has its own "Settings + subhead + wordmark" header that matches Home/People.
-- Every Form icon in Settings is amber.
-- Tab bar selected item is amber.
-- Chat nav bar has the character's actual avatar + name + tagline / "typing…" indicator.
-- Action chips on assistant bubbles always carry a hint of the character's accent.
-- Image generation shows a shimmering "Painting…" card while waiting.
+- `xcodebuild build` → SUCCEEDED (Debug, iPhone 17 Pro Max sim, iOS 26).
+- App installs + launches cleanly. Smoke screenshots captured for
+  Home (default + layout cycler visible), Grammar dashboard, and Sidebar.
 
 ---
 
-## Still pending after both runs
+## Deltas vs the plan
 
-### High-confidence shipped, polish/verify needed
-- Phase 8 panels deep behavior (Lorebook CRUD round-trip, Generation Override pipeline). Build + UI smoke verified, but full user flows need a longer session.
-- Apple Sign-In interactive — Personal Team disabled the entitlement (commit `550a115`); needs paid Apple Developer account.
+- **Task 8a (Floating MessageRail) shipped partial.** The full refactor
+  of `MessageBubbleView` (selection-driven floating vertical rail of
+  4 circular chips on the selected message) was deemed high-risk for an
+  unattended autonomous run because it touches `ChatView.messagesScroll`
+  selection state, gesture wiring, and bubble reflow simultaneously.
+  The two adjacent Update 2.C refinements (image-gen copy + variants
+  pill) landed instead; the existing inline action chips continue to
+  render unchanged. Follow-up: complete the rail refactor as a
+  standalone cycle.
 
-### Surface-level deferred items
-- T2.7 LaunchScreen — needs Xcode UI / Info.plist edit (or a launch storyboard) to wire the wordmark into the boot screen.
-- Import-from-PNG character flow — needs Character Card v1/v2/v3 metadata parsing (PNG tEXt chunks).
-- Formal Snapshot Tests — needs `swift-snapshot-testing` SPM dep + a `storyplotsTests/Snapshots/` harness. Manual a11y screenshot verification done this round.
-- App-icon glyph refinement — current icon is a CoreGraphics-rendered open-book + sparkle. Designer pass welcome.
+- **Snapshot tests deferred.** Plan §Testing Strategy lists Swift Testing
+  unit tests for sidebar grouping, card parser, and gallery ordering.
+  Not written in this run; filed as a follow-up.
 
-### Creator-only / blocked
-- `POST /api/v2/ios/push/register` route on the backend (AUTONOMY §4 prohibits modifying `base/`).
-- Apple Developer Portal: push, background modes, associated domains.
-- App Store Connect: app record, internal testing, privacy nutrition.
-- `apple-app-site-association` JSON hosting.
-
----
-
-## How to resume
-
-1. Open `storyplots.xcodeproj`, build, run on iPhone 17 Pro Max sim.
-2. Sign in with `xvp@storyplots.app` / `SmokeTest!Xvp2026`.
-3. Backend at `http://127.0.0.1:8000` must be up.
-4. The visible app surface — Home, People, Settings, Chat — should now match the creator's "production feel" bar.
-5. Next priorities (in order):
-   - T2.7 LaunchScreen storyboard work (Xcode UI; 15 min once Xcode is open).
-   - Generation Override visible-when-active badge near the image chip.
-   - Snapshot test harness with SnapshotTesting + a few canonical surfaces.
-   - Phase 10 backend push register route (creator action required).
+- **`.toolbar(.hidden, for: .navigationBar)` swapped for
+  `.toolbarBackground(.hidden, for: .navigationBar)`** on Home,
+  People, Gallery, so the sidebar toggle button stays visible in the
+  nav bar without re-introducing the bar background. The wordmark hero
+  in Home renders below the nav-bar safe area cleanly.
 
 ---
 
-> Updated by Claude per AUTONOMY.md §7 after the creator-driven polish round.
-> The audit + plan that drove these changes lives in the conversation
-> transcript; the commits are the durable artifact.
+## To review when human returns
+
+1. Visually walk all three destinations from the sidebar toggle.
+2. Tap a Recent row → confirm `CharacterChatsView` lists the right
+   conversations and tapping one opens `ChatView` with full history.
+3. Tap a character on Home/Characters → confirm `CharacterLandingView`
+   opens; tap scenario card → fresh conversation + scenario as first
+   assistant message.
+4. Open Settings → Experience section → each new sub-screen loads and
+   round-trips a save to `users.preferences`.
+5. Gallery → confirm the grid + viewer + long-press delete cycle.
+6. Grammar dashboard → tap "Run insights now" and confirm the backend
+   updates aggregate row.
+7. Try Character Import with a real Character Card v2 PNG.
+
+---
+
+## Follow-ups
+
+- **Follow-up A**: complete the floating MessageRail refactor (Task 8a
+  full version) — selection state in ChatView, tap-empty-to-deselect,
+  remove inline action row when selected.
+- **Follow-up B**: write the deferred Swift Testing unit tests
+  (`SidebarViewModelTests`, `CharacterCardParserTests`,
+  `GalleryViewModelTests`).
+- **Follow-up C**: backend `/api/v2/ios/push/register` route (AUTONOMY
+  §4 prohibits modifying `base/`).
+
+---
+
+> Updated by Claude per AUTONOMY.md §7 after the autonomous Fase 11 run.
+> The plan + report are the durable artifacts; this file is the entry
+> point for the human reviewer.

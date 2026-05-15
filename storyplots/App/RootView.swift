@@ -9,7 +9,7 @@ struct RootView: View {
     var body: some View {
         Group {
             if auth.isSignedIn {
-                MainTabView()
+                AppShellView(client: auth.client)
             } else {
                 SignInView()
             }

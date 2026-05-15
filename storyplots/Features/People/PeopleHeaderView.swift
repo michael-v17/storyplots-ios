@@ -18,12 +18,13 @@ struct PeopleHeaderView: View {
     @Binding var filter: PeopleFilter
     let onCreate: () -> Void
     let onGenerate: () -> Void
+    let onImport: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("People")
+                    Text("Characters")
                         .font(Theme.FontStyle.h2)
                         .foregroundStyle(Theme.Color.fg)
                     Text(countLabel)
@@ -43,6 +44,12 @@ struct PeopleHeaderView: View {
                         onGenerate()
                     } label: {
                         Label("Generate with AI", systemImage: "wand.and.stars")
+                    }
+                    Button {
+                        Haptics.impact(.medium)
+                        onImport()
+                    } label: {
+                        Label("Import from PNG card", systemImage: "square.and.arrow.down")
                     }
                 } label: {
                     Image(systemName: "plus")

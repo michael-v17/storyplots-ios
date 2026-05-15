@@ -30,7 +30,7 @@ struct SettingsView: View {
                         brandLabel("Image Engine", systemImage: "photo.stack")
                     }
                     NavigationLink(value: SettingsDestination.memoryEngine) {
-                        brandLabel("Memory", systemImage: "brain")
+                        brandLabel("Memory Engine", systemImage: "brain")
                     }
                     NavigationLink(value: SettingsDestination.voice) {
                         brandLabel("Voice", systemImage: "waveform")
@@ -44,8 +44,23 @@ struct SettingsView: View {
                     NavigationLink(value: SettingsDestination.writingStyles) {
                         brandLabel("Writing styles", systemImage: "pencil.and.outline")
                     }
+                    NavigationLink(value: SettingsDestination.grammarDashboard) {
+                        brandLabel("Grammar dashboard", systemImage: "chart.bar.doc.horizontal")
+                    }
                     NavigationLink(value: SettingsDestination.grammar) {
-                        brandLabel("Grammar", systemImage: "checkmark.bubble")
+                        brandLabel("Grammar settings", systemImage: "checkmark.bubble")
+                    }
+                }
+
+                Section("Experience") {
+                    NavigationLink(value: SettingsDestination.visualRoleplay) {
+                        brandLabel("Visual roleplay", systemImage: "photo.artframe")
+                    }
+                    NavigationLink(value: SettingsDestination.promptEditor) {
+                        brandLabel("Prompt editor", systemImage: "doc.text")
+                    }
+                    NavigationLink(value: SettingsDestination.memoryUser) {
+                        brandLabel("Memory", systemImage: "brain.head.profile")
                     }
                 }
 
@@ -81,16 +96,20 @@ struct SettingsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(for: SettingsDestination.self) { dest in
             switch dest {
-            case .textEngine:    TextEngineSettingsView(client: auth.client)
-            case .imageEngine:   ImageEngineSettingsView(client: auth.client)
-            case .memoryEngine:  MemoryEngineSettingsView(client: auth.client)
-            case .voice:         VoiceSettingsView(client: auth.client)
-            case .profile:       ProfileView(client: auth.client)
-            case .privacy:       PrivacyAndDataView(client: auth.client).environment(auth)
-            case .roleplay:      RoleplaySettingsView(client: auth.client)
-            case .writingStyles: WritingStylesSettingsView(client: auth.client)
-            case .grammar:       GrammarSettingsView(client: auth.client)
-            case .about:         AboutView()
+            case .textEngine:        TextEngineSettingsView(client: auth.client)
+            case .imageEngine:       ImageEngineSettingsView(client: auth.client)
+            case .memoryEngine:      MemoryEngineSettingsView(client: auth.client)
+            case .voice:             VoiceSettingsView(client: auth.client)
+            case .profile:           ProfileView(client: auth.client)
+            case .privacy:           PrivacyAndDataView(client: auth.client).environment(auth)
+            case .roleplay:          RoleplaySettingsView(client: auth.client)
+            case .writingStyles:     WritingStylesSettingsView(client: auth.client)
+            case .grammar:           GrammarSettingsView(client: auth.client)
+            case .grammarDashboard:  GrammarDashboardView(client: auth.client)
+            case .visualRoleplay:    VisualRoleplaySettingsView(client: auth.client)
+            case .promptEditor:      PromptEditorView(client: auth.client)
+            case .memoryUser:        MemorySettingsView(client: auth.client)
+            case .about:             AboutView()
             }
         }
     }
@@ -160,7 +179,8 @@ struct SettingsView: View {
 enum SettingsDestination: Hashable {
     case profile
     case textEngine, imageEngine, memoryEngine, voice
-    case roleplay, writingStyles, grammar
+    case roleplay, writingStyles, grammar, grammarDashboard
+    case visualRoleplay, promptEditor, memoryUser
     case privacy, about
 
     var title: String {
@@ -168,11 +188,15 @@ enum SettingsDestination: Hashable {
         case .profile: return "Profile"
         case .textEngine: return "Text Engine"
         case .imageEngine: return "Image Engine"
-        case .memoryEngine: return "Memory"
+        case .memoryEngine: return "Memory Engine"
         case .voice: return "Voice"
         case .roleplay: return "Roleplay"
         case .writingStyles: return "Writing styles"
-        case .grammar: return "Grammar"
+        case .grammar: return "Grammar settings"
+        case .grammarDashboard: return "Grammar dashboard"
+        case .visualRoleplay: return "Visual roleplay"
+        case .promptEditor: return "Prompt editor"
+        case .memoryUser: return "Memory"
         case .privacy: return "Privacy & Data"
         case .about: return "About"
         }

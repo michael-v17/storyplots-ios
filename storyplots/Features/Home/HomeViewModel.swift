@@ -1,11 +1,11 @@
 import Foundation
 import Observation
-import SwiftUI
+import OSLog
 import Supabase
+import SwiftUI
 
-/// State + commands behind the Home tab. Owns `[Conversation]`, the user's
-/// persona, and a `characters` lookup so each card can render its accent
-/// + avatar. Direct Zone-B Supabase reads (no backend hop).
+private let homeLog = Logger(subsystem: "com.storyplots.ios", category: "home")
+
 @MainActor
 @Observable
 final class HomeViewModel {
@@ -17,10 +17,15 @@ final class HomeViewModel {
     }
 
     private(set) var loadState: LoadState = .idle
-    private(set) var conversations: [Conversation] = []
+    private(set) var characters: [Character] = []
     private(set) var persona: UserPersona?
-    /// `character_id` → `Character` snapshot used to render accent + avatar.
-    private(set) var charactersByID: [String: Character] = [:]
+    /// `nil` until the first load attempts a fetch — used by the Grammar widget
+    /// to render either "—" (no data yet) or a percent.
+    private(set) var grammarAccuracy: Double?
+    /// User preference for the grammar "master" toggle (from `users.preferences.grammar.master`).
+    private(set) var grammarMasterEnabled: Bool = false
+
+    var searchText: String = ""
 
     let client: SupabaseClient
 
@@ -28,74 +33,63 @@ final class HomeViewModel {
         self.client = client
     }
 
+    var filtered: [Character] {
+        let needle = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !needle.isEmpty else { return characters }
+        return characters.filter { char in
+            let bag = [char.name, char.tagline ?? "", char.scenario ?? ""].joined(separator: " ").lowercased()
+            return bag.contains(needle)
+        }
+    }
+
     func load() async {
         loadState = .loading
         do {
-            async let conversationsTask = fetchConversations()
             async let charactersTask = fetchCharacters()
             async let personaTask = fetchPersona()
+            async let grammarTask = fetchGrammar()
+            async let prefsTask = fetchGrammarPref()
 
-            let (conv, chars, pers) = try await (conversationsTask, charactersTask, personaTask)
-
-            self.conversations = conv
-            self.charactersByID = Dictionary(uniqueKeysWithValues: chars.map { ($0.id, $0) })
+            let (chars, pers, accuracy, masterOn) = try await (charactersTask, personaTask, grammarTask, prefsTask)
+            self.characters = chars
             self.persona = pers
+            self.grammarAccuracy = accuracy
+            self.grammarMasterEnabled = masterOn
             self.loadState = .loaded
         } catch {
             self.loadState = .error(error.localizedDescription)
         }
     }
 
-    func delete(_ conversation: Conversation) async {
-        // Optimistic local removal.
-        let snapshot = conversations
-        conversations.removeAll { $0.id == conversation.id }
-        do {
-            try await client.from("conversations").delete().eq("id", value: conversation.id).execute()
-        } catch {
-            // Roll back on failure.
-            conversations = snapshot
-            loadState = .error(error.localizedDescription)
-        }
+    func accent(for character: Character) -> SwiftUI.Color {
+        guard let hex = character.accent_color else { return Theme.Color.brand1 }
+        return SwiftUI.Color(hex: HomeViewModel.parseHex(hex) ?? 0xF5B547)
     }
 
-    func accent(for conversation: Conversation) -> SwiftUI.Color {
-        guard let charID = conversation.character_id,
-              let hex = charactersByID[charID]?.accent_color else {
-            return Theme.Color.brand1
-        }
-        return SwiftUI.Color(hex: Self.parseHex(hex) ?? 0xF5B547)
-    }
-
-    func avatarRef(for conversation: Conversation) -> String? {
-        guard let charID = conversation.character_id,
-              let ref = charactersByID[charID]?.avatar_ref,
-              !ref.isEmpty else {
-            return nil
-        }
+    func avatarRef(for character: Character) -> String? {
+        guard let ref = character.avatar_ref, !ref.isEmpty else { return nil }
         return ref
+    }
+
+    func toggleGrammarMaster() async {
+        grammarMasterEnabled.toggle()
+        do {
+            try await persistGrammarMaster(enabled: grammarMasterEnabled)
+        } catch {
+            homeLog.error("toggle grammar master failed: \(error.localizedDescription, privacy: .public)")
+            grammarMasterEnabled.toggle()
+        }
     }
 
     // MARK: queries
 
-    private func fetchConversations() async throws -> [Conversation] {
-        let response: [Conversation] = try await client
-            .from("conversations")
-            .select("id, title, character_id, character_snapshot, last_message_at, updated_at")
-            .order("updated_at", ascending: false)
-            .limit(50)
-            .execute()
-            .value
-        return response
-    }
-
     private func fetchCharacters() async throws -> [Character] {
-        let response: [Character] = try await client
+        try await client
             .from("characters")
-            .select("id, name, avatar_ref, accent_color, updated_at")
+            .select("id, name, tagline, avatar_ref, accent_color, scenario, age, gender, system_prompt, mode, updated_at")
+            .order("updated_at", ascending: false)
             .execute()
             .value
-        return response
     }
 
     private func fetchPersona() async throws -> UserPersona? {
@@ -106,6 +100,68 @@ final class HomeViewModel {
             .execute()
             .value
         return rows.first
+    }
+
+    /// Soft-fails: returns nil if the row/column doesn't exist yet.
+    private func fetchGrammar() async -> Double? {
+        struct AggregateRow: Decodable {
+            let last_aggregate_pct: Double?
+        }
+        do {
+            let rows: [AggregateRow] = try await client
+                .from("grammar_aggregates")
+                .select("last_aggregate_pct")
+                .limit(1)
+                .execute()
+                .value
+            return rows.first?.last_aggregate_pct
+        } catch {
+            homeLog.info("grammar_aggregates unavailable: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    private func fetchGrammarPref() async -> Bool {
+        struct Row: Decodable { let preferences: AnyCodable? }
+        do {
+            let rows: [Row] = try await client
+                .from("users")
+                .select("preferences")
+                .limit(1)
+                .execute()
+                .value
+            guard let prefs = rows.first?.preferences?.value as? [String: Any],
+                  let grammar = prefs["grammar"] as? [String: Any],
+                  let master = grammar["master"] as? Bool else {
+                return false
+            }
+            return master
+        } catch {
+            return false
+        }
+    }
+
+    private func persistGrammarMaster(enabled: Bool) async throws {
+        struct Row: Decodable { let preferences: AnyCodable? }
+        let rows: [Row] = try await client
+            .from("users")
+            .select("preferences")
+            .limit(1)
+            .execute()
+            .value
+        var prefs = (rows.first?.preferences?.value as? [String: Any]) ?? [:]
+        var grammar = (prefs["grammar"] as? [String: Any]) ?? [:]
+        grammar["master"] = enabled
+        prefs["grammar"] = grammar
+        guard let data = try? JSONSerialization.data(withJSONObject: prefs),
+              let prefsString = String(data: data, encoding: .utf8) else { return }
+        struct Update: Encodable { let preferences: String }
+        let uid = try await client.auth.session.user.id.uuidString
+        try await client
+            .from("users")
+            .update(Update(preferences: prefsString))
+            .eq("id", value: uid)
+            .execute()
     }
 
     /// Parses leading-#-or-not hex like `"#F5B547"` or `"F5B547"`.

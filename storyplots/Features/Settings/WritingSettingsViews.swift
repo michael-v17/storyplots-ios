@@ -5,7 +5,7 @@ import Supabase
 
 /// Reads + writes a single key under `users.preferences` (JSONB column).
 /// Used by Roleplay / Writing Styles / Grammar / Visual Roleplay screens.
-private final class PreferenceFamilyStore: @unchecked Sendable {
+final class PreferenceFamilyStore: @unchecked Sendable {
     let client: SupabaseClient
     let family: String
 

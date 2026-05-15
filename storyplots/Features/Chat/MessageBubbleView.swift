@@ -197,10 +197,50 @@ struct MessageBubbleView: View {
             RoundedRectangle(cornerRadius: Theme.Radius.card)
                 .fill(isAssistant ? Theme.Color.bg2 : Theme.Color.bg3)
         )
+        .overlay(alignment: .topLeading) {
+            if isAssistant, let (current, total) = variantPagination, total > 1 {
+                variantPill(current: current, total: total)
+                    .padding(.leading, Theme.Spacing.s2)
+                    .offset(y: -10)
+            }
+        }
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.card)
                 .stroke(isAssistant ? accent.opacity(0.45) : Color.clear, lineWidth: 1)
         )
+    }
+
+    @ViewBuilder
+    private func variantPill(current: Int, total: Int) -> some View {
+        HStack(spacing: 6) {
+            Button {
+                Haptics.selection()
+                let target = (current - 1 + total) % total
+                onSelectVariant(target)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(accent)
+            Text("\(current + 1)/\(total)")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Theme.Color.fg)
+            Button {
+                Haptics.selection()
+                let target = (current + 1) % total
+                onSelectVariant(target)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(accent)
+        }
+        .padding(.horizontal, Theme.Spacing.s2)
+        .padding(.vertical, 3)
+        .background(Capsule().fill(Theme.Color.bg3))
+        .overlay(Capsule().strokeBorder(accent.opacity(0.45), lineWidth: 1))
     }
 
     private var bubbleMaxWidth: CGFloat? {

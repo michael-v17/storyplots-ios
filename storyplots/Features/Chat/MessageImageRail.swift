@@ -45,9 +45,14 @@ struct MessageImageRail: View {
                 Image(systemName: "sparkles")
                     .font(.system(size: 24, weight: .medium))
                     .foregroundStyle(accent)
-                Text("Painting…")
+                Text("Generating…")
+                    .font(Theme.FontStyle.timestamp.weight(.semibold))
+                    .foregroundStyle(Theme.Color.fg)
+                Text("Feel free to keep chatting")
                     .font(Theme.FontStyle.timestamp)
                     .foregroundStyle(Theme.Color.fg2)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, Theme.Spacing.s2)
             }
         }
         .frame(width: 160, height: 160)
