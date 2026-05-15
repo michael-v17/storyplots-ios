@@ -6,6 +6,7 @@ import SwiftUI
 /// the toolbar takes over once it's past the safe area.
 struct HomeHeaderView: View {
     let personaName: String?
+    let personaPhotoRef: String?
     let conversationCount: Int
     let onAvatarTap: () -> Void
 
@@ -37,17 +38,13 @@ struct HomeHeaderView: View {
     }
 
     private var avatar: some View {
-        ZStack {
-            Circle()
-                .fill(Theme.Color.brand1.opacity(0.22))
-                .frame(width: 48, height: 48)
-            Circle()
-                .strokeBorder(Theme.Color.brand1.opacity(0.55), lineWidth: 1.5)
-                .frame(width: 48, height: 48)
-            Text(initialsString)
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundStyle(Theme.Color.fg)
-        }
+        AvatarView(
+            avatarRef: personaPhotoRef,
+            name: personaName ?? "You",
+            accent: Theme.Color.brand1,
+            size: 48,
+            ringWidth: 1.5
+        )
     }
 
     private var greeting: String {

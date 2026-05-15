@@ -41,9 +41,10 @@ struct MessageBubbleView: View {
                     )
                     VStack(alignment: .leading, spacing: 0) {
                         bubble
-                        if !images.isEmpty {
+                        if !images.isEmpty || imageRequestLoading {
                             MessageImageRail(
                                 images: images,
+                                isLoading: imageRequestLoading,
                                 accent: accent,
                                 namespace: imageNamespace,
                                 onSelect: onSelectImage
@@ -163,15 +164,21 @@ struct MessageBubbleView: View {
             HStack(spacing: Theme.Spacing.s1) {
                 Image(systemName: systemImage)
                     .imageScale(.small)
+                    .foregroundStyle(isActive ? accent : accent.opacity(0.95))
                 Text(label)
-                    .font(Theme.FontStyle.timestamp)
+                    .font(Theme.FontStyle.timestamp.weight(.medium))
+                    .foregroundStyle(isActive ? accent : Theme.Color.fg1)
             }
             .padding(.horizontal, Theme.Spacing.s3)
             .padding(.vertical, Theme.Spacing.s2)
-            .foregroundStyle(isActive ? accent : Theme.Color.fg1)
-            .background(Theme.Material.chip, in: Capsule())
+            .background(
+                ZStack {
+                    Capsule().fill(Theme.Material.chip)
+                    Capsule().fill(accent.opacity(isActive ? 0.18 : 0.08))
+                }
+            )
             .overlay(
-                Capsule().stroke(isActive ? accent.opacity(0.6) : Theme.Color.borderSoft, lineWidth: 1)
+                Capsule().stroke(accent.opacity(isActive ? 0.7 : 0.35), lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

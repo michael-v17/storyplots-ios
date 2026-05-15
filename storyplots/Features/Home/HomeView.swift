@@ -43,6 +43,7 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 HomeHeaderView(
                     personaName: model.persona?.name,
+                    personaPhotoRef: model.persona?.photo_ref,
                     conversationCount: model.conversations.count,
                     onAvatarTap: { showPersonaSheet = true }
                 )
@@ -114,6 +115,7 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 HomeHeaderView(
                     personaName: nil,
+                    personaPhotoRef: nil,
                     conversationCount: 0,
                     onAvatarTap: { showPersonaSheet = true }
                 )

@@ -72,10 +72,29 @@ struct ChatView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: Theme.Spacing.s2) {
-                    Circle().fill(model.accent).frame(width: 8, height: 8)
-                    Text(model.characterName)
-                        .font(.headline)
-                        .foregroundStyle(Theme.Color.fg)
+                    AvatarView(
+                        avatarRef: model.avatarRef,
+                        name: model.characterName,
+                        accent: model.accent,
+                        size: 28,
+                        ringWidth: 1.5
+                    )
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(model.characterName)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.Color.fg)
+                            .lineLimit(1)
+                        if let tagline = model.character?.tagline, !tagline.isEmpty {
+                            Text(tagline)
+                                .font(.caption2)
+                                .foregroundStyle(Theme.Color.fg3)
+                                .lineLimit(1)
+                        } else if model.isStreaming {
+                            Text("typing…")
+                                .font(.caption2)
+                                .foregroundStyle(model.accent)
+                        }
+                    }
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {

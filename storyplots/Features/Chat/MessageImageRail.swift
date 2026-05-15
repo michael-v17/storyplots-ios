@@ -10,6 +10,7 @@ import SwiftUI
 /// of attempting to load the (non-existent) image asset.
 struct MessageImageRail: View {
     let images: [GeneratedImage]
+    let isLoading: Bool
     let accent: Color
     let namespace: Namespace.ID
     let onSelect: (GeneratedImage) -> Void
@@ -24,10 +25,38 @@ struct MessageImageRail: View {
                         thumbnail(for: img)
                     }
                 }
+                if isLoading {
+                    loadingCard
+                }
             }
             .padding(.horizontal, Theme.Spacing.s1)
         }
         .padding(.top, Theme.Spacing.s2)
+    }
+
+    /// Shimmering placeholder rendered while `/messages/{id}/images` is in
+    /// flight. Matches the thumbnail dimensions so the rail doesn't reflow
+    /// when the real image arrives.
+    private var loadingCard: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .fill(Theme.Color.bg3)
+            VStack(spacing: Theme.Spacing.s2) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundStyle(accent)
+                Text("Painting…")
+                    .font(Theme.FontStyle.timestamp)
+                    .foregroundStyle(Theme.Color.fg2)
+            }
+        }
+        .frame(width: 160, height: 160)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .stroke(accent.opacity(0.5), lineWidth: 1)
+        )
+        .shimmer()
     }
 
     private func thumbnail(for img: GeneratedImage) -> some View {
