@@ -51,8 +51,10 @@ final class PeopleViewModel {
         return SwiftUI.Color(hex: HomeViewModel.parseHex(hex) ?? 0xF5B547)
     }
 
-    func avatarURL(for character: Character) -> URL? {
+    /// Storage ref (path inside the `avatars` bucket). Used by `AvatarView`
+    /// to resolve a signed URL on the actor.
+    func avatarRef(for character: Character) -> String? {
         guard let ref = character.avatar_ref, !ref.isEmpty else { return nil }
-        return URL(string: "\(SupabaseConfig.url.absoluteString)/storage/v1/object/public/avatars/\(ref)")
+        return ref
     }
 }

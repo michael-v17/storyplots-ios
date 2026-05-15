@@ -68,7 +68,7 @@ struct PeopleView: View {
                             CharacterDetailView(
                                 character: character,
                                 accent: model.accent(for: character),
-                                avatarURL: model.avatarURL(for: character),
+                                avatarRef: model.avatarRef(for: character),
                                 client: client,
                                 onChanged: { Task { await model.load() } }
                             )
@@ -76,7 +76,7 @@ struct PeopleView: View {
                             CharacterCardView(
                                 character: character,
                                 accent: model.accent(for: character),
-                                avatarURL: model.avatarURL(for: character)
+                                avatarRef: model.avatarRef(for: character)
                             )
                         }
                         .buttonStyle(.plain)

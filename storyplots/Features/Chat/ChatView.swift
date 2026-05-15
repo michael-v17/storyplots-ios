@@ -16,13 +16,13 @@ struct ChatView: View {
     init(conversationID: String,
          character: Character?,
          accent: Color,
-         avatarURL: URL?,
+         avatarRef: String?,
          client: SupabaseClient) {
         _model = State(initialValue: ChatViewModel(
             conversationID: conversationID,
             character: character,
             accent: accent,
-            avatarURL: avatarURL,
+            avatarRef: avatarRef,
             client: client
         ))
         self.client = client
@@ -149,7 +149,7 @@ struct ChatView: View {
                                 item: item,
                                 accent: model.accent,
                                 characterName: model.characterName,
-                                avatarURL: model.avatarURL,
+                                avatarRef: model.avatarRef,
                                 variantPagination: model.variantPagination(for: item.id, currentBody: item.body),
                                 images: model.images(for: item.id),
                                 imageRequestLoading: model.imageRequestState[item.id] == .loading,

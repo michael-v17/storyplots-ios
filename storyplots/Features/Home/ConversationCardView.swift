@@ -5,12 +5,12 @@ import SwiftUI
 struct ConversationCardView: View {
     let conversation: Conversation
     let accent: Color
-    let avatarURL: URL?
+    let avatarRef: String?
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s3) {
             AvatarView(
-                imageURL: avatarURL,
+                avatarRef: avatarRef,
                 name: conversation.characterName,
                 accent: accent,
                 size: 56

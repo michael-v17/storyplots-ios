@@ -67,15 +67,13 @@ final class HomeViewModel {
         return SwiftUI.Color(hex: Self.parseHex(hex) ?? 0xF5B547)
     }
 
-    func avatarURL(for conversation: Conversation) -> URL? {
+    func avatarRef(for conversation: Conversation) -> String? {
         guard let charID = conversation.character_id,
               let ref = charactersByID[charID]?.avatar_ref,
               !ref.isEmpty else {
             return nil
         }
-        // Storage buckets are public-readable for avatars in this project's setup;
-        // signed URL helper lands in Phase 3 when People grid needs more bullet-proof access.
-        return URL(string: "\(SupabaseConfig.url.absoluteString)/storage/v1/object/public/avatars/\(ref)")
+        return ref
     }
 
     // MARK: queries

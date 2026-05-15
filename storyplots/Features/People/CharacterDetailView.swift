@@ -6,7 +6,7 @@ import Supabase
 struct CharacterDetailView: View {
     let character: Character
     let accent: Color
-    let avatarURL: URL?
+    let avatarRef: String?
     let client: SupabaseClient
     let onChanged: () -> Void
 
@@ -52,7 +52,7 @@ struct CharacterDetailView: View {
     private var heroHeader: some View {
         HStack(spacing: Theme.Spacing.s4) {
             AvatarView(
-                imageURL: avatarURL,
+                avatarRef: avatarRef,
                 name: character.name,
                 accent: accent,
                 size: 96,

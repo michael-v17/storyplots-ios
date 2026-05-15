@@ -7,7 +7,7 @@ struct MessageBubbleView: View {
     let item: MessageItem
     let accent: Color
     let characterName: String
-    let avatarURL: URL?
+    let avatarRef: String?
     /// `(currentIndex, total)` when the assistant message has >1 variant.
     let variantPagination: (Int, Int)?
     /// Images attached to this message (assistant-only). Empty when none.
@@ -32,7 +32,7 @@ struct MessageBubbleView: View {
             HStack(alignment: .top, spacing: Theme.Spacing.s2) {
                 if item.role == .assistant {
                     AvatarView(
-                        imageURL: avatarURL,
+                        avatarRef: avatarRef,
                         name: characterName,
                         accent: accent,
                         size: 28,

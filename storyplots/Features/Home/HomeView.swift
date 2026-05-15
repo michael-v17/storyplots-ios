@@ -52,14 +52,14 @@ struct HomeView: View {
                                 conversationID: conv.id,
                                 character: conv.character_id.flatMap { model.charactersByID[$0] },
                                 accent: model.accent(for: conv),
-                                avatarURL: model.avatarURL(for: conv),
+                                avatarRef: model.avatarRef(for: conv),
                                 client: model.client
                             )
                         } label: {
                             ConversationCardView(
                                 conversation: conv,
                                 accent: model.accent(for: conv),
-                                avatarURL: model.avatarURL(for: conv)
+                                avatarRef: model.avatarRef(for: conv)
                             )
                         }
                         .buttonStyle(.plain)

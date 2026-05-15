@@ -25,7 +25,9 @@ final class ChatViewModel {
     let conversationID: String
     let character: Character?
     let accent: SwiftUI.Color
-    let avatarURL: URL?
+    /// Storage path in the `avatars` bucket (e.g. `{user_id}/character-{id}.webp`).
+    /// `AvatarView(avatarRef:)` resolves a signed URL on demand.
+    let avatarRef: String?
 
     private(set) var loadState: LoadState = .idle
     private(set) var streamState: StreamState = .idle
@@ -56,11 +58,11 @@ final class ChatViewModel {
         case error(String)
     }
 
-    init(conversationID: String, character: Character?, accent: SwiftUI.Color, avatarURL: URL?, client: SupabaseClient) {
+    init(conversationID: String, character: Character?, accent: SwiftUI.Color, avatarRef: String?, client: SupabaseClient) {
         self.conversationID = conversationID
         self.character = character
         self.accent = accent
-        self.avatarURL = avatarURL
+        self.avatarRef = avatarRef
         self.client = client
     }
 

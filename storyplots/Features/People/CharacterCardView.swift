@@ -6,7 +6,9 @@ import SwiftUI
 struct CharacterCardView: View {
     let character: Character
     let accent: Color
-    let avatarURL: URL?
+    let avatarRef: String?
+
+    @State private var avatarURL: URL?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -19,6 +21,7 @@ struct CharacterCardView: View {
             RoundedRectangle(cornerRadius: Theme.Radius.card)
                 .stroke(accent.opacity(0.55), lineWidth: 2)
         )
+        .task(id: avatarRef ?? "") { await resolveAvatar() }
     }
 
     private var avatar: some View {
@@ -77,5 +80,9 @@ struct CharacterCardView: View {
         guard !trimmed.isEmpty else { return "·" }
         let parts = trimmed.split(separator: " ", omittingEmptySubsequences: true).prefix(2)
         return String(parts.compactMap { $0.first }).uppercased()
+    }
+
+    private func resolveAvatar() async {
+        avatarURL = await SupabaseStorageHelper.shared.avatarURL(path: avatarRef)
     }
 }
