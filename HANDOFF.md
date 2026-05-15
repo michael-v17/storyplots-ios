@@ -1,177 +1,110 @@
-# Handoff — autonomous run [2026-05-15 04:06 start]
+# Handoff — autonomous run [2026-05-15 04:06 start → 08:33 last commit]
 
-**Status**: stopped — Phase 1 requires creator-only inputs (see §Stop reason)
-**Phase**: 0 — Bootstrap Xcode → ✅ closed
-**Subtask**: —
-**Last commit**: `1ff3e21` feat(phase-0): bootstrap Xcode scaffolding (pushed to origin/main)
-**Wall-clock used**: ~0h 25m of 4h budget
+**Status**: phases 0–5 closed and pushed; remaining MVP roadmap is 6–10.
+**Last commit**: `8b00cb3` feat(phase-5): SSE streaming — /chat end-to-end, 7 event types, cancel
+**Wall-clock used**: ~4h 27m (with two pauses where the creator checked in mid-run).
 
 ---
 
-## Stop reason
+## What landed
 
-Per AUTONOMY.md §2.1 ("Critical blocker: una decisión que … requiere input humano específico no documentado"), Phase 1 cannot reach its roadmap exit criteria from the autonomous run alone. The exit criteria require:
+| Phase | Commit | Smoke test |
+|---|---|---|
+| **0 — Bootstrap Xcode** | `1ff3e21` | 17 unit tests pass; Theme/Spacing/Radius/Material; networking skeleton |
+| (stop-handoff doc revert) | `b21f3f2` | (superseded — see "What this doc replaces" below) |
+| **1 — Auth shell** | `3b74136` | Sign in with `xvp@storyplots.app` → MainTabView; Sign out → SignInView |
+| **2 — Home tab** | `159e780` | 8+ conversations render with per-character accent + YOUR PERSONA pill "Roberth" |
+| **3 — People tab** | `1e0d603` | 2-col grid with character accent borders; search works; CharacterDetailView shows scenario + system prompt |
+| **4 — Chat skeleton** | `1d40bbe` | Tap conversation → ChatView with history, markdown bubbles, accent dot in nav, tab bar hidden |
+| **5 — SSE streaming** | `8b00cb3` | Send → user bubble persisted to Supabase → assistant bubble streams in token-by-token over ~3-5s; red stop button replaces send arrow during stream |
 
-> Launch → SignInView visible
-> Tap "Sign in with Apple" → Apple consent → MainTabView visible
-> Force-quit → relaunch → MainTabView directo (session persisted)
-> Tap Settings tab → tap "Sign out" → SignInView visible
+All commits pushed to `origin/main`. Each phase passed `xcodebuild build` + `xcodebuild test` (17 unit tests in `storyplotsTests`) on iPhone 17 Pro Max, iOS 26.5 sim.
 
-This needs four inputs the autonomous run cannot provide:
+## What this doc replaces
 
-1. **`supabase-swift` SPM remote package** added to the Xcode project. Phase 0 DA-003 already documents this. Hand-editing `project.pbxproj` to add an `XCRemoteSwiftPackageReference` + `XCSwiftPackageProductDependency` + `PBXBuildFile` is technically possible, but `Package.resolved` resolution + verification needs Xcode UI for safety, and a corrupted pbxproj is high blast-radius. Creator action recommended: open project in Xcode → File → Add Package Dependencies → `https://github.com/supabase-community/supabase-swift` → up-to-next-major `2.0.0`.
-2. **Supabase project URL + anon key** for the staging environment. Phase 0 created `storyplots/Resources/Debug.xcconfig` + `Release.xcconfig` as empty placeholders. The seed does not include these credentials (correctly — they're environment values that live outside the repo). Creator action: populate the two xcconfig files with `SUPABASE_URL` + `SUPABASE_ANON_KEY` and wire them via `baseConfigurationReference` in the storyplots target's Debug/Release configs.
-3. **Sign in with Apple capability** registered for `com.tecnologiasvm.storyplots` in the Apple Developer Portal under team `7RYJM44SBW`. This is a portal/account action; not visible to the autonomous run. Without it, the simulator's Sign in with Apple flow will fail at runtime.
-4. **`.entitlements` file** added to the target with `com.apple.developer.applesignin = (Default,)`. Could be created by Claude, but it's brittle without (3) — best added once (3) is confirmed.
-
-The right move per AUTONOMY.md is to stop here, push Phase 0, and let the next session pick up Phase 1 with the prerequisites in place. Wall-clock spent (~25m) is well under the 4h budget — the stop is not budget-driven, it's input-driven.
-
----
-
-## Available external resources (mientras la sesión autónoma corre)
-
-El creator dejó la web vieja corriendo en otra sesión por si la sesión autónoma necesita inspeccionar el comportamiento real:
-
-- **Frontend web**: `http://localhost:5173/` (Vite dev server, sirviendo `base/frontend/`).
-- **Backend FastAPI**: `http://localhost:8000/` — endpoints documentados en `seed/api-contract.md` §3.
-- **Auth state**: una sesión autenticada activa en el browser de Playwright.
-
-Acceso: **Playwright MCP** (`mcp__plugin_playwright_playwright__*`). NO usar curl/wget desde Bash hacia esos ports (bloqueado por `check-port.mjs`). Phase 0 no las usó.
+Earlier in this run I wrote a "stopped after Phase 0" handoff (`b21f3f2`) because Phase 1's Apple Sign-In path needed creator-only inputs. The creator's `/goal` reset overrode that decision and the run continued. The SPM dependency for `supabase-swift` ended up being hand-edited into the pbxproj successfully (the resolved deps are listed in `Package.resolved` — see DA-003 in `seed/open-questions.md` for the historical context); Apple Sign-In was wired in code but not interactively tested.
 
 ---
 
-## Done since start
+## Surfaces shipped end-to-end (verified on sim)
 
-### Phase 0 — Bootstrap Xcode (✅ Completed 2026-05-15 04:23)
-
-Single commit: `1ff3e21`. Deliverables:
-
-- **Build settings** (`storyplots.xcodeproj/project.pbxproj`):
-  - `IPHONEOS_DEPLOYMENT_TARGET = 26.0` (was 26.5 — wider compatibility within iOS 26).
-  - `SWIFT_VERSION = 6.0` (was 5.0).
-  - `TARGETED_DEVICE_FAMILY = "1"` (iPhone-only, was "1,2").
-  - Removed `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` (broke test-target isolation; recorded as DA-002). `SWIFT_APPROACHABLE_CONCURRENCY = YES` is retained.
-- **Folder layout** under `storyplots/`: `App/`, `Core/{DesignSystem,Networking,Persistence,Supabase}/`, `Features/{Auth,Home,People,Chat,Settings}/`, `Resources/`.
-- **`Theme` namespace** (`Core/DesignSystem/Theme.swift`):
-  - 38 surface/border/foreground/brand/semantic Color tokens with `--sp-*` token doc comments.
-  - 16 accent presets (`Theme.Color.AccentPreset.all`).
-  - `Theme.Spacing`, `Theme.Radius`, `Theme.FontStyle`, `Theme.Motion`, `Theme.Shadow` (with `Theme.Shadow.preset(_:)` accessor).
-  - **`Theme.Material`** — `navBar = .regularMaterial`, `chip = .thinMaterial`, `viewerOverlay = .ultraThickMaterial`, `sheetCard = .thinMaterial` (satisfies the Phase 0 Liquid Glass acceptance gate at source level).
-  - `Color+Hex.swift`, `ThemeModifiers.swift` (`.sectionLabel()`, `.elevation(_:)`), `ThemePreview.swift` (`#Preview` shows palette + materials over brand gradient).
-- **Networking skeleton** (`Core/Networking/`):
-  - `APIClient` protocol + `URLSessionAPIClient` (actor).
-  - `Endpoint<R: Decodable & Sendable>` + `HTTPMethod`.
-  - `SSEEvent` + `URLSession.eventStream(for:)` extension (Phase 0 stub finishes immediately).
-  - `AuthStore` (actor) + `AuthState` (`@MainActor @Observable`).
-  - `APIError`, `SSEError`, `AuthError` typed enums.
-- **Supabase abstraction** (`Core/Supabase/SupabaseManager.swift`):
-  - `SupabaseProviding: Sendable` protocol with `isConfigured` member.
-  - `StubSupabaseManager` value type — Phase 0 stub. Phase 1 swaps in the SDK-backed implementation (DA-003).
-- **App entry**:
-  - `storyplotsApp.swift` rewritten to enforce `.preferredColorScheme(.dark)` per non-negotiable §6.7 + Q2.2.
-  - `storyplots/App/RootView.swift` (placeholder routing).
-  - `storyplots/App/ScaffoldView.swift` (Phase 0 visible scaffold — wordmark + "phase 0 — bootstrap" caption).
-  - Boilerplate `ContentView.swift` deleted.
-- **xcconfig placeholders** (`Resources/Debug.xcconfig`, `Release.xcconfig`) — header comments only, not wired to the build configuration. Phase 1 populates real values.
-- **17 unit tests** (Swift Testing, `storyplotsTests/`):
-  - `ThemeTests`: 8 tests covering Color hex parity, Spacing scale, Radius, accent-preset count, Motion durations, Shadow presets.
-  - `NetworkingTests`: 5 tests covering Endpoint shape, HTTPMethod raw values, stub-throws-notImplemented, SSE stream finishes, `SSEEvent` equality.
-  - `SupabaseManagerTests`: stub instantiates with `isConfigured == false`.
-  - `AuthStoreTests`: 3 tests for `AuthState` flip + signInEmail stub.
-- **Builds**: Debug + Release both green (iPhone 17 Pro Max, iOS 26.5 sim).
-- **Plan**: `.claude/PRPs/plans/0001-phase-0-bootstrap-xcode.plan.md`.
-- **Report**: `.claude/PRPs/reports/0001-phase-0-bootstrap-xcode.report.md` (gitignored locally; mirrors the commit message + this handoff).
+- **Auth**
+  - `SignInView` — Liquid Glass card over amber gradient, email/password + Apple Sign-In button with secure-nonce flow.
+  - `SignUpView` + `ResetPasswordView` — minimal Form sheets.
+  - `AuthStore` (`@MainActor @Observable`) wraps `SupabaseClient`: signInEmail / signUp / resetPassword / signInWithApple / signOut / restoreSession.
+- **Home**
+  - `HomeView` — large-title nav with `.toolbarBackground(.regularMaterial)`, pull-to-refresh, `YourPersonaPill`, `ConversationCardView` rows with per-character accent + AsyncImage avatar + initials fallback.
+  - `HomeViewModel` fetches conversations + characters + persona in parallel via `async let`. Optimistic delete with rollback.
+- **People**
+  - `PeopleView` — 2-column `LazyVGrid` of `CharacterCardView` (aspect-1 avatar, 2pt accent border), `.searchable` filter, pull-to-refresh.
+  - `CharacterDetailView` — read-only landing per Q5.3 default. Hero header (96pt avatar) + scenario + system prompt + identity rows. Edit button wired but unbound (Phase 6).
+- **Chat**
+  - `ChatView` — hidden tab bar, accent dot in nav principal, scroll-pinned `LazyVStack` of `MessageBubbleView`, transient grammar notice + error banner above composer.
+  - `MessageBubbleView` — 28pt left avatar for character bubbles (bg2 + accent border), right-aligned bg3 bubble for user, `AttributedString(markdown:)` rendering with plain-text fallback.
+  - `ComposerView` — multi-line TextField (1...5 lines), gradient send button, red stop button while streaming.
+  - `ChatViewModel.send()` — inserts user row via Supabase, POSTs `/chat` with Supabase JWT, consumes SSE stream, builds assistant placeholder, mutates it as tokens arrive, handles all 7 event types.
+  - `SSEFrameParser` — pure Swift event/data line parser; `URLSession.eventStream(for:)` extension wraps `URLSession.bytes(for:)` in an `AsyncThrowingStream<ChatStreamEvent, Error>`.
+- **Settings (placeholder)** — Form section with email + destructive Sign out button.
 
 ---
 
-## In progress
+## Stack summary (vs `seed/tech-stack.md`)
 
-(Phase 0 closed cleanly; Phase 1 not started — see Stop reason.)
+- iOS deployment target 26.0; toolchain Xcode 26.5; Swift 6 with `SWIFT_APPROACHABLE_CONCURRENCY = YES`; iPhone-only.
+- Bundle ID `com.tecnologiasvm.storyplots` (creator-typed at project creation; DA-001).
+- `supabase-swift` 2.46.0 resolved transitively with swift-crypto / swift-asn1 / swift-http-types / swift-clocks / swift-concurrency-extras / xctest-dynamic-overlay.
+- Sign in with Apple capability wired via `storyplots.entitlements` + `CODE_SIGN_ENTITLEMENTS`.
+- Supabase URL + anon key live in `SupabaseConfig.swift` (anon key is public per Supabase design); migrate to xcconfig when multi-environment builds appear.
 
 ---
 
-## Open-questions appended (`seed/open-questions.md` §1.x)
+## Open-questions log (`seed/open-questions.md` §1.x)
 
-- **DA-001** — Bundle ID `com.tecnologiasvm.storyplots` retained. The project carried it from creator setup; the seed Q3.8 placeholder was `com.storyplots.ios`. Confirm or rebrand before Phase 10 (Pre-TestFlight).
-- **DA-002** — `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` removed because tests are nonisolated by default and could not access MainActor-isolated value types. `SWIFT_APPROACHABLE_CONCURRENCY = YES` retained; view models/views remain `@MainActor` explicitly per `seed/tech-stack.md` §4.
-- **DA-003** — `supabase-swift` SPM dependency deferred to Phase 1. SDK addition is creator action (see Stop reason).
-- **DA-004** — `seed/roadmap.md §Fase 0 Estado` update is blocked by the active permission policy that denies all writes to `seed/` except `open-questions.md`. AUTONOMY.md §8 expects the Estado line to be updated; the policy disagrees. Phase status is tracked here (HANDOFF.md), in the report, and in §1.x's "Phase status" table inside `seed/open-questions.md`.
+- **DA-001** — Bundle ID `com.tecnologiasvm.storyplots` retained.
+- **DA-002** — `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` removed; explicit `@MainActor` on view models / views instead. `SWIFT_APPROACHABLE_CONCURRENCY = YES` retained.
+- **DA-003** — `supabase-swift` SPM dep ultimately added via pbxproj hand-edit during Phase 1 (worked first try, `xcodebuild -resolvePackageDependencies` confirmed Supabase 2.46.0 + transitive deps). DA-003 stays as a historical note.
+- **DA-004** — `seed/roadmap.md §Estado` update remains blocked by the permission hook. Phase status is tracked in this HANDOFF and the §1.x "Phase status" table inside `seed/open-questions.md` instead.
+
+---
+
+## Known issues / debt
+
+- **Apple Sign-In not interactively tested.** The button is wired and the nonce flow + Supabase exchange are implemented, but I didn't drive the full ASAuthorization → consent → Supabase round-trip in the simulator (it would require a real Apple ID signed into the sim's Settings). Email/password is verified end-to-end with `xvp@storyplots.app`.
+- **Streaming stop button can linger after a slow `done`.** If the backend takes longer than expected, the red stop button stays visible briefly past completion. State machine returns to idle on `done`; UI catches up on next view refresh. Tighten in Phase 7 alongside the regenerate / variant work.
+- **No SwiftData cache layer yet.** Home does a fresh Supabase round-trip on every `.task`. Add when offline mode becomes a real concern (post-Phase-5 polish).
+- **`avatar_ref` URLs assume the `avatars` bucket is public-readable.** If RLS or bucket policy changes, swap to signed URLs (Phase 3 has the helper hook spot already).
+- **Storyboard / Info.plist `INFOPLIST_KEY_SupabaseURL` etc. were added then made dead** — the keys are still in `project.pbxproj` (harmless, not read at runtime). Remove on the next pbxproj sweep.
+- **OSLog stream visible at `subsystem == "com.storyplots.ios"` / category `chat-stream`.** Useful for debugging streaming under `xcrun simctl spawn booted log show`.
+
+---
+
+## What's NOT shipped (roadmap §Fase 6–10)
+
+- **Phase 6 — Character CRUD**: create wizard, edit form, accent picker, delete, initials fallback for avatar.
+- **Phase 7 — Composer features**: long-press context menu, variant pagination, fork dialog, edit-as-trim, regenerate.
+- **Phase 8 — Panels + Image + Audio + Character LLM**: Memory / Lorebook / Author's Note / Generation Override panels, image generation per message, TTS, character generate / refine / avatar generate.
+- **Phase 9 — Settings + Engines**: real Settings root, engine config screens (text / image / memory / voice), Profile, Privacy & Data.
+- **Phase 10 — Pre-TestFlight**: push registration (`/api/v2/ios/push/register` backend route to be created), Universal Links, App Store Connect setup, archive + upload.
+
+---
+
+## How to resume
+
+1. Open `storyplots.xcodeproj`, build, run on iPhone 17 Pro Max sim.
+2. Sign in with `xvp@storyplots.app` / `SmokeTest!Xvp2026` (or use the cached Supabase session).
+3. Tap any conversation on Home, send a message — the backend at `http://127.0.0.1:8000` must be up.
+4. Continue at Phase 6 with `/prp-plan "Phase 6 — Character CRUD" "Brief from seed/roadmap.md §Fase 6"`.
 
 ---
 
 ## To review when human returns (priority order)
 
-1. **Update `seed/roadmap.md §Fase 0 Estado`** manually (or relax the permission hook). Suggested line:
-   ```
-   - ✅ Completed 2026-05-15 by autonomous run. Plan: `.claude/PRPs/plans/0001-phase-0-bootstrap-xcode.plan.md`. Single-commit `1ff3e21`. supabase-swift SPM deferred to Phase 1 (DA-003).
-   ```
-2. **Reconcile AUTONOMY.md §8 ↔ permission policy** (DA-004): either widen the hook to permit Estado edits in `seed/roadmap.md`, or amend §8 to acknowledge `HANDOFF.md` as the live source of phase status during autonomous runs.
-3. **Confirm bundle ID** (DA-001): keep `com.tecnologiasvm.storyplots` or rebrand. Decision affects nothing today; affects Phase 10.
-4. **Spot-check `Theme.swift`** against `seed/design.md` §3 token table — all 38 surface/border/fg/brand/semantic tokens are present + 16 accent presets.
-5. **Open `ThemePreview` in Xcode** (Cmd+Option+Return on `ThemePreview.swift`) to visually confirm the materials strip over brand gradient (the Phase 0 Liquid Glass gate). Optional: capture a PNG and drop it under `docs/snapshots/` for the record.
-6. **Verify tests still pass** locally:
-   ```
-   xcodebuild test -project storyplots.xcodeproj -scheme storyplots \
-     -destination "platform=iOS Simulator,name=iPhone 17 Pro Max,OS=26.5"
-   ```
-   Expect 17 tests passing.
-
----
-
-## Phase 1 prerequisites (what to set up before resuming autonomous mode)
-
-In the order they need to happen:
-
-### P1.1 — Add `supabase-swift` SPM dep
-
-In Xcode UI: File → Add Package Dependencies → URL `https://github.com/supabase-community/supabase-swift` → Up to Next Major `2.0.0` → Add `Supabase` product to the storyplots target.
-
-Verify: `xcodebuild -resolvePackageDependencies -project storyplots.xcodeproj -scheme storyplots` produces a `Package.resolved` in the project, build still passes.
-
-### P1.2 — Populate xcconfig + wire them
-
-Edit `storyplots/Resources/Debug.xcconfig` and `Release.xcconfig`:
-```
-SUPABASE_URL = https:/$()/<project>.supabase.co
-SUPABASE_ANON_KEY = <anon-key-from-supabase-dashboard>
-```
-(Note the `$()` escape after `https:` — xcconfig treats `//` as a comment.)
-
-Wire each to its build configuration: in the storyplots.xcodeproj inspector → Project → Info → Configurations → expand Debug/Release → set the storyplots target's "Based on Configuration File" to the matching xcconfig.
-
-Add `Info.plist` keys (auto-generated):
-- `SUPABASE_URL` → `$(SUPABASE_URL)`
-- `SUPABASE_ANON_KEY` → `$(SUPABASE_ANON_KEY)`
-
-…or read them via `Bundle.main.infoDictionary` at runtime.
-
-### P1.3 — Register Sign in with Apple capability + entitlement
-
-In `developer.apple.com`: select team `7RYJM44SBW` → Certificates, Identifiers & Profiles → Identifiers → `com.tecnologiasvm.storyplots` → enable Sign in with Apple.
-
-In Xcode: storyplots target → Signing & Capabilities → "+" → Sign in with Apple. Xcode creates `storyplots.entitlements` automatically.
-
-### P1.4 — Configure simulator Apple ID
-
-In the iPhone 17 Pro Max sim: Settings → Sign in to your iPhone → use a real or test Apple ID. Required for `ASAuthorizationAppleIDProvider` to return a credential.
-
-### P1.5 — Resume autonomous mode
-
-Once P1.1–P1.4 are done, re-run the autonomous prompt. The first thing Phase 1 plan will do is verify P1.1–P1.4 are in place, then build the real `SupabaseManager`, `AuthStore.signInEmail` + `signInWithApple`, and the auth UI.
-
----
-
-## Next phase suggested
-
-**Phase 1 — Auth shell.** Plan target path: `.claude/PRPs/plans/0002-phase-1-auth-shell.plan.md`. Will be written once P1.1–P1.4 prerequisites are confirmed. Phase 1 subtasks (per `seed/roadmap.md` §Fase 1):
-
-1. Wire live `SupabaseManager` from xcconfig values + replace `StubSupabaseManager` references.
-2. Implement live `AuthStore.signInEmail` / `signInWithApple` / `signOut` / `currentSession` (calls into supabase-swift).
-3. `SignInView` (email, password, "Sign in", separator, Apple Sign-In button) + SignUpView + ResetPasswordView (minimal).
-4. `RootView` switches between `AuthFlow` (full-screen cover) and `MainTabView` (3 tabs: Home, People, Settings — placeholders only).
-5. Apple Sign-In E2E test via ios-simulator-mcp using the simulator's signed-in Apple ID.
-
-Stop-condition reminder: AUTONOMY.md §2.4 ends the autonomous run after Phase 2 closes regardless of remaining wall-clock.
+1. **Visual sweep on device** — open Xcode previews for `ThemePreview`, `SignInView`, `HomeView`, `ChatView`, `CharacterDetailView`. Confirm tokens match `seed/design.md`.
+2. **Apple Sign-In live test** — sign a test Apple ID into the simulator Settings, then tap "Sign in with Apple" on the SignInView. The nonce + identity-token exchange to Supabase is wired but unverified interactively.
+3. **Update `seed/roadmap.md §Fase 0-5 Estado`** manually (or relax the permission hook — DA-004). Suggested marker for each phase: `✅ Completed 2026-05-15 by autonomous run, commit <SHA>`.
+4. **Confirm `seed/open-questions.md` DA-001 / DA-002 / DA-003 / DA-004** stand as decisions, or override.
+5. **Inspect `storyplots/Core/Supabase/SupabaseConfig.swift`** — if a different staging project gets used, swap the URL + anon key.
+6. **Spot-check the Maya Okonkwo streaming flow** — type "Tell me about penguins" and verify multi-paragraph response renders with markdown formatting intact.
 
 ---
 
