@@ -4,6 +4,7 @@ import Supabase
 struct PeopleView: View {
     @State private var model: PeopleViewModel
     @State private var showCreateSheet: Bool = false
+    @State private var showGenerateSheet: Bool = false
     @State private var filter: PeopleFilter = .all
     @Namespace private var transitionNamespace
     private let client: SupabaseClient
@@ -45,6 +46,11 @@ struct PeopleView: View {
                 Task { await model.load() }
             }
         }
+        .sheet(isPresented: $showGenerateSheet) {
+            CharacterGenerateSheet(client: client) { _ in
+                Task { await model.load() }
+            }
+        }
     }
 
     private var gridState: some View {
@@ -53,7 +59,8 @@ struct PeopleView: View {
                 PeopleHeaderView(
                     characterCount: model.characters.count,
                     filter: $filter,
-                    onCreate: { showCreateSheet = true }
+                    onCreate: { showCreateSheet = true },
+                    onGenerate: { showGenerateSheet = true }
                 )
                 if model.filtered.isEmpty {
                     emptyState
@@ -107,7 +114,8 @@ struct PeopleView: View {
                 PeopleHeaderView(
                     characterCount: 0,
                     filter: $filter,
-                    onCreate: { showCreateSheet = true }
+                    onCreate: { showCreateSheet = true },
+                    onGenerate: { showGenerateSheet = true }
                 )
                 LazyVGrid(columns: columns, spacing: Theme.Spacing.s3) {
                     ForEach(0..<6, id: \.self) { _ in

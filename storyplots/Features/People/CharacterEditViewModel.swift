@@ -120,6 +120,42 @@ final class CharacterEditViewModel {
         }
     }
 
+
+    /// POST `/characters/{id}/generate-avatar`. On success, the backend
+    /// writes a new `avatar_ref` to the row — we refetch the avatar_ref
+    /// so the form reflects it.
+    func generateAvatar() async -> String? {
+        guard let id = existingID else { return nil }
+        saveState = .saving
+        do {
+            let session = try await client.auth.session
+            let jwt = session.accessToken
+            var request = URLRequest(url: BackendConfig.url
+                .appendingPathComponent("characters")
+                .appendingPathComponent(id)
+                .appendingPathComponent("generate-avatar"))
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+            request.timeoutInterval = 120
+            request.httpBody = Data("{}".utf8)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+                let body = String(data: data, encoding: .utf8) ?? "Unknown error"
+                saveState = .error(body)
+                return nil
+            }
+            struct AvatarResponse: Decodable { let avatar_ref: String? }
+            let decoded = try JSONDecoder().decode(AvatarResponse.self, from: data)
+            saveState = .saved
+            return decoded.avatar_ref
+        } catch {
+            saveState = .error(error.localizedDescription)
+            return nil
+        }
+    }
+
     private func normalizedAccent() -> String {
         let trimmed = accentHex.trimmingCharacters(in: .whitespaces)
         return trimmed.hasPrefix("#") ? trimmed : "#" + trimmed

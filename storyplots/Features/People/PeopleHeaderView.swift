@@ -17,6 +17,7 @@ struct PeopleHeaderView: View {
     let characterCount: Int
     @Binding var filter: PeopleFilter
     let onCreate: () -> Void
+    let onGenerate: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
@@ -30,9 +31,19 @@ struct PeopleHeaderView: View {
                         .foregroundStyle(Theme.Color.fg3)
                 }
                 Spacer(minLength: 0)
-                Button {
-                    Haptics.impact(.medium)
-                    onCreate()
+                Menu {
+                    Button {
+                        Haptics.impact(.medium)
+                        onCreate()
+                    } label: {
+                        Label("Manual create", systemImage: "person.crop.circle.badge.plus")
+                    }
+                    Button {
+                        Haptics.impact(.medium)
+                        onGenerate()
+                    } label: {
+                        Label("Generate with AI", systemImage: "wand.and.stars")
+                    }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 18, weight: .semibold))

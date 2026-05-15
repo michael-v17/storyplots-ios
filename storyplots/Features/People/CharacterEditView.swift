@@ -37,6 +37,23 @@ struct CharacterEditView: View {
                     .padding(.vertical, Theme.Spacing.s2)
             }
 
+            Section("Avatar") {
+                Button {
+                    Haptics.impact(.medium)
+                    Task { _ = await model.generateAvatar() }
+                } label: {
+                    HStack {
+                        if model.saveState == .saving {
+                            ProgressView()
+                        } else {
+                            Label("Generate avatar with AI", systemImage: "wand.and.stars")
+                        }
+                        Spacer()
+                    }
+                }
+                .disabled(model.saveState == .saving)
+            }
+
             if case .error(let m) = model.saveState {
                 Section {
                     Text(m).foregroundStyle(Theme.Color.destructive).font(Theme.FontStyle.meta)
