@@ -9,6 +9,8 @@ struct ChatView: View {
     @State private var activePanel: ChatPanel?
     @State private var forkAnchorID: String?
     @State private var forkedConversationID: String?
+    @State private var presentedImage: GeneratedImage?
+    @Namespace private var imageNamespace
     private let client: SupabaseClient
 
     init(conversationID: String,
@@ -102,6 +104,16 @@ struct ChatView: View {
             Text("New branch created. Go back to Home to open it.")
         }
         .task { if model.loadState == .idle { await model.load() } }
+        .overlay(alignment: .center) {
+            if let img = presentedImage {
+                ImageViewer(image: img, namespace: imageNamespace) {
+                    withAnimation(Theme.Motion.smooth) { presentedImage = nil }
+                }
+                .transition(.opacity)
+                .zIndex(50)
+            }
+        }
+        .onDisappear { model.stopAllAudio() }
     }
 
     private struct ForkAnchor: Identifiable, Equatable { let id: String }
@@ -139,11 +151,20 @@ struct ChatView: View {
                                 characterName: model.characterName,
                                 avatarURL: model.avatarURL,
                                 variantPagination: model.variantPagination(for: item.id, currentBody: item.body),
+                                images: model.images(for: item.id),
+                                imageRequestLoading: model.imageRequestState[item.id] == .loading,
+                                audioState: model.audioState(for: item.id),
+                                imageNamespace: imageNamespace,
                                 onCopy: { UIPasteboard.general.string = item.body },
                                 onRegenerate: { model.regenerate(messageID: item.id) },
                                 onDelete: { model.deleteMessage(item.id) },
                                 onFork: { forkAnchorID = item.id },
-                                onSelectVariant: { idx in model.setActiveVariant(messageID: item.id, index: idx) }
+                                onSelectVariant: { idx in model.setActiveVariant(messageID: item.id, index: idx) },
+                                onRequestImage: { model.requestImage(messageID: item.id) },
+                                onSelectImage: { img in
+                                    withAnimation(Theme.Motion.smooth) { presentedImage = img }
+                                },
+                                onToggleAudio: { model.toggleAudio(messageID: item.id) }
                             )
                             .id(item.id)
                         }

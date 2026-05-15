@@ -10,11 +10,22 @@ struct MessageBubbleView: View {
     let avatarURL: URL?
     /// `(currentIndex, total)` when the assistant message has >1 variant.
     let variantPagination: (Int, Int)?
+    /// Images attached to this message (assistant-only). Empty when none.
+    let images: [GeneratedImage]
+    /// Loading state of the image-generation request for this message.
+    let imageRequestLoading: Bool
+    /// TTS audio state for this message (idle/loading/playing/paused/error).
+    let audioState: MessageAudioState
+    /// Namespace for `matchedGeometryEffect("img-<id>")` shared with `ImageViewer`.
+    let imageNamespace: Namespace.ID
     let onCopy: () -> Void
     let onRegenerate: () -> Void
     let onDelete: () -> Void
     let onFork: () -> Void
     let onSelectVariant: (Int) -> Void
+    let onRequestImage: () -> Void
+    let onSelectImage: (GeneratedImage) -> Void
+    let onToggleAudio: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -27,8 +38,19 @@ struct MessageBubbleView: View {
                         size: 28,
                         ringWidth: 1
                     )
-                    bubble
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 0) {
+                        bubble
+                        if !images.isEmpty {
+                            MessageImageRail(
+                                images: images,
+                                accent: accent,
+                                namespace: imageNamespace,
+                                onSelect: onSelectImage
+                            )
+                        }
+                        assistantActionRow
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     Spacer(minLength: Theme.Spacing.s6)
                     bubble
@@ -57,6 +79,16 @@ struct MessageBubbleView: View {
                 } label: {
                     Label("Regenerate", systemImage: "arrow.clockwise")
                 }
+                Button {
+                    onRequestImage()
+                } label: {
+                    Label("Generate image", systemImage: "photo.badge.plus")
+                }
+                Button {
+                    onToggleAudio()
+                } label: {
+                    Label("Read aloud", systemImage: "speaker.wave.2.fill")
+                }
             }
             Button {
                 onFork()
@@ -69,6 +101,64 @@ struct MessageBubbleView: View {
                 Label("Delete", systemImage: "trash")
             }
         }
+    }
+
+    /// Floating action chips below an assistant bubble — image + audio.
+    @ViewBuilder
+    private var assistantActionRow: some View {
+        HStack(spacing: Theme.Spacing.s2) {
+            actionChip(
+                systemImage: imageRequestLoading ? "hourglass" : "photo.badge.plus",
+                label: images.isEmpty ? "Image" : "Add image",
+                isActive: imageRequestLoading,
+                action: onRequestImage
+            )
+            actionChip(
+                systemImage: audioChipSymbol,
+                label: audioChipLabel,
+                isActive: audioState == .playing,
+                action: onToggleAudio
+            )
+            Spacer(minLength: 0)
+        }
+        .padding(.top, Theme.Spacing.s2)
+    }
+
+    private var audioChipSymbol: String {
+        switch audioState {
+        case .idle, .error:    return "speaker.wave.2"
+        case .loading:         return "hourglass"
+        case .playing:         return "pause.fill"
+        case .paused:          return "play.fill"
+        }
+    }
+
+    private var audioChipLabel: String {
+        switch audioState {
+        case .idle, .error:    return "Read aloud"
+        case .loading:         return "Loading"
+        case .playing:         return "Pause"
+        case .paused:          return "Play"
+        }
+    }
+
+    private func actionChip(systemImage: String, label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Spacing.s1) {
+                Image(systemName: systemImage)
+                    .imageScale(.small)
+                Text(label)
+                    .font(Theme.FontStyle.timestamp)
+            }
+            .padding(.horizontal, Theme.Spacing.s3)
+            .padding(.vertical, Theme.Spacing.s2)
+            .foregroundStyle(isActive ? accent : Theme.Color.fg1)
+            .background(Theme.Material.chip, in: Capsule())
+            .overlay(
+                Capsule().stroke(isActive ? accent.opacity(0.6) : Theme.Color.borderSoft, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var bubble: some View {

@@ -32,12 +32,29 @@ final class ChatViewModel {
     private(set) var items: [MessageItem] = []
     /// All variants per assistant message id — backs the pagination dots.
     private(set) var variantsByMessage: [String: [MessageVariant]] = [:]
+    /// All generated images per assistant message id — backs the inline image rail.
+    private(set) var imagesByMessage: [String: [GeneratedImage]] = [:]
+    /// Per-message image request state (loading / error) — keyed by message id.
+    private(set) var imageRequestState: [String: ImageRequestState] = [:]
+    /// Per-message TTS audio state — keyed by message id.
+    private(set) var audioStateByMessage: [String: MessageAudioState] = [:]
+    /// Cached audio bytes by message id, so play/pause/resume doesn't re-fetch.
+    private var audioCache: [String: Data] = [:]
+    /// Content-type of the cached audio, used to pick the right temp file ext.
+    private var audioContentType: [String: String] = [:]
 
     /// Soft alert when grammar_error or rewrite_required surfaces.
     private(set) var transientNotice: String?
 
     private let client: SupabaseClient
     private var streamTask: Task<Void, Never>?
+    private let audioPlayer = MessageAudioPlayer()
+
+    enum ImageRequestState: Sendable, Equatable {
+        case idle
+        case loading
+        case error(String)
+    }
 
     init(conversationID: String, character: Character?, accent: SwiftUI.Color, avatarURL: URL?, client: SupabaseClient) {
         self.conversationID = conversationID
@@ -88,10 +105,226 @@ final class ChatViewModel {
             self.variantsByMessage = byMessage
 
             self.items = messages.map { MessageItem(message: $0, activeVariant: $0.active_variant_id.flatMap { byID[$0] }) }
+
+            // Generated images attached to assistant messages in this conversation.
+            await loadImages()
+
             self.loadState = .loaded
         } catch {
             self.loadState = .error(error.localizedDescription)
         }
+    }
+
+    private func loadImages() async {
+        do {
+            let rows: [GeneratedImage] = try await client
+                .from("generated_images")
+                .select("id, user_id, character_id, conversation_id, message_id, prompt, refined_prompt, resolution_preset, dimensions, storage_ref, external_url, engine, style, sfw_blocked, created_at")
+                .eq("conversation_id", value: conversationID)
+                .order("created_at", ascending: true)
+                .execute()
+                .value
+            var bucket: [String: [GeneratedImage]] = [:]
+            for row in rows {
+                guard let mid = row.message_id else { continue }
+                bucket[mid, default: []].append(row)
+            }
+            self.imagesByMessage = bucket
+        } catch {
+            chatLog.error("loadImages failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Returns the images attached to the given message id, or empty.
+    func images(for messageID: String) -> [GeneratedImage] {
+        imagesByMessage[messageID] ?? []
+    }
+
+    /// POST `/messages/{message_id}/images` and append the returned row to the
+    /// local rail.
+    func requestImage(messageID: String) {
+        guard imageRequestState[messageID] != .loading else { return }
+        imageRequestState[messageID] = .loading
+        Task { [weak self] in
+            await self?.runRequestImage(messageID: messageID)
+        }
+    }
+
+    private func runRequestImage(messageID: String) async {
+        do {
+            let session = try await client.auth.session
+            let jwt = session.accessToken
+
+            let url = BackendConfig.url
+                .appendingPathComponent("messages")
+                .appendingPathComponent(messageID)
+                .appendingPathComponent("images")
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+            // Empty body — backend uses defaults.
+            request.httpBody = "{}".data(using: .utf8)
+            // fal can be slow; comfyui sweeper async. Give the request room.
+            request.timeoutInterval = 120
+
+            chatLog.info("image request begin message=\(messageID, privacy: .public)")
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let http = response as? HTTPURLResponse else {
+                throw APIError.transport("No HTTP response")
+            }
+            guard (200..<300).contains(http.statusCode) else {
+                let body = String(data: data, encoding: .utf8) ?? ""
+                let detail = parseDetail(from: body) ?? "Request failed (\(http.statusCode))"
+                chatLog.error("image request status=\(http.statusCode, privacy: .public) body=\(body, privacy: .public)")
+                imageRequestState[messageID] = .error(detail)
+                return
+            }
+
+            let row = try JSONDecoder().decode(GeneratedImage.self, from: data)
+            chatLog.info("image request done id=\(row.id, privacy: .public) engine=\(row.engine?.rawValue ?? "?", privacy: .public)")
+
+            imagesByMessage[messageID, default: []].append(row)
+            imageRequestState[messageID] = .idle
+        } catch {
+            chatLog.error("image request failed: \(error.localizedDescription, privacy: .public)")
+            imageRequestState[messageID] = .error(error.localizedDescription)
+        }
+    }
+
+    // MARK: Audio TTS
+
+    func audioState(for messageID: String) -> MessageAudioState {
+        audioStateByMessage[messageID] ?? .idle
+    }
+
+    /// Toggle TTS for the given assistant message:
+    /// - idle → fetch + play
+    /// - playing → pause
+    /// - paused → resume
+    /// - loading → no-op (already in-flight)
+    func toggleAudio(messageID: String) {
+        switch audioState(for: messageID) {
+        case .idle, .error:
+            // If we already have bytes cached (e.g., user paused on a different
+            // message), play from cache without hitting the backend again.
+            if let data = audioCache[messageID] {
+                playCached(data: data, messageID: messageID)
+                return
+            }
+            audioStateByMessage[messageID] = .loading
+            Task { [weak self] in
+                await self?.runFetchAudio(messageID: messageID)
+            }
+        case .playing:
+            audioPlayer.pause()
+            audioStateByMessage[messageID] = .paused
+        case .paused:
+            audioPlayer.resume()
+            audioStateByMessage[messageID] = .playing
+        case .loading:
+            break
+        }
+    }
+
+    private func playCached(data: Data, messageID: String) {
+        do {
+            // Stop any other in-flight track.
+            if let prev = audioPlayer.currentMessageID, prev != messageID {
+                audioStateByMessage[prev] = .idle
+            }
+            audioPlayer.onFinish = { [weak self] mid in
+                self?.audioStateByMessage[mid] = .idle
+            }
+            try audioPlayer.play(data, for: messageID, contentType: audioContentType[messageID])
+            audioStateByMessage[messageID] = .playing
+        } catch {
+            chatLog.error("audio play failed: \(error.localizedDescription, privacy: .public)")
+            audioStateByMessage[messageID] = .error(error.localizedDescription)
+        }
+    }
+
+    private func runFetchAudio(messageID: String) async {
+        do {
+            let session = try await client.auth.session
+            let jwt = session.accessToken
+
+            let url = BackendConfig.url
+                .appendingPathComponent("messages")
+                .appendingPathComponent(messageID)
+                .appendingPathComponent("audio")
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = Data() // no body
+            request.timeoutInterval = 60
+
+            chatLog.info("audio request begin message=\(messageID, privacy: .public)")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw APIError.transport("No HTTP response")
+            }
+            guard (200..<300).contains(http.statusCode) else {
+                let body = String(data: data, encoding: .utf8) ?? ""
+                let detail = parseDetail(from: body) ?? "Audio request failed (\(http.statusCode))"
+                chatLog.error("audio status=\(http.statusCode, privacy: .public) body=\(body, privacy: .public)")
+                audioStateByMessage[messageID] = .error(detail)
+                return
+            }
+            audioCache[messageID] = data
+            audioContentType[messageID] = http.value(forHTTPHeaderField: "Content-Type")
+            playCached(data: data, messageID: messageID)
+            chatLog.info("audio request done message=\(messageID, privacy: .public) bytes=\(data.count) ct=\(self.audioContentType[messageID] ?? "?", privacy: .public)")
+        } catch {
+            chatLog.error("audio request failed: \(error.localizedDescription, privacy: .public)")
+            audioStateByMessage[messageID] = .error(error.localizedDescription)
+        }
+    }
+
+    func stopAllAudio() {
+        audioPlayer.stop()
+        for (k, _) in audioStateByMessage {
+            audioStateByMessage[k] = .idle
+        }
+    }
+
+    // MARK: Image delete
+
+    /// Delete an image — calls backend `/images/{id}` which cascades to storage.
+    func deleteImage(_ image: GeneratedImage) {
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let session = try await self.client.auth.session
+                let jwt = session.accessToken
+                let url = BackendConfig.url
+                    .appendingPathComponent("images")
+                    .appendingPathComponent(image.id)
+                var request = URLRequest(url: url)
+                request.httpMethod = "DELETE"
+                request.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+                let (_, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) {
+                    if let mid = image.message_id {
+                        self.imagesByMessage[mid]?.removeAll { $0.id == image.id }
+                    }
+                }
+            } catch {
+                chatLog.error("delete image failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func parseDetail(from body: String) -> String? {
+        guard let data = body.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return json["detail"] as? String
     }
 
     /// Returns (currentIndex, total) for an assistant message, or nil if no variants exist.
