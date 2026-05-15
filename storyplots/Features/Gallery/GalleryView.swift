@@ -175,7 +175,13 @@ struct GalleryTile: View {
 
     var body: some View {
         Button(action: onTap) {
-            Group {
+            ZStack {
+                // Always reserve a square slot — content paints on top.
+                RoundedRectangle(cornerRadius: Theme.Radius.card)
+                    .fill(Theme.Color.bg2)
+                    .aspectRatio(1, contentMode: .fit)
+                    .shimmer()
+
                 if let url {
                     AsyncImage(url: url) { phase in
                         switch phase {
@@ -184,20 +190,17 @@ struct GalleryTile: View {
                         case .failure:
                             placeholder
                         case .empty:
-                            ProgressView().tint(Theme.Color.brand1)
+                            Color.clear
                         @unknown default:
                             placeholder
                         }
                     }
+                    .aspectRatio(1, contentMode: .fit)
+                    .clipped()
                 } else if didResolve || image.sfw_blocked == true {
                     placeholder
-                } else {
-                    ProgressView().tint(Theme.Color.brand1)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .aspectRatio(1, contentMode: .fit)
-            .clipped()
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.card)

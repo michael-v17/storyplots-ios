@@ -6,6 +6,17 @@ import SwiftUI
 struct storyplotsApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
+    init() {
+        // Bump the shared URLCache so AsyncImage can hold many more avatars +
+        // generated images in memory and on disk during a session. Signed URLs
+        // rotate per Supabase TTL, so this is intra-session caching; cross-
+        // launch image caching by stable storage_ref would need a custom cache.
+        URLCache.shared = URLCache(
+            memoryCapacity: 50 * 1024 * 1024,
+            diskCapacity: 300 * 1024 * 1024
+        )
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

@@ -38,20 +38,41 @@ struct CharacterEditView: View {
             }
 
             Section("Avatar") {
-                Button {
-                    Haptics.impact(.medium)
-                    Task { _ = await model.generateAvatar() }
-                } label: {
-                    HStack {
-                        if model.saveState == .saving {
-                            ProgressView()
-                        } else {
-                            Label("Generate avatar with AI", systemImage: "wand.and.stars")
-                        }
-                        Spacer()
+                VStack(alignment: .center, spacing: Theme.Spacing.s3) {
+                    Button {
+                        guard model.avatarRef != nil else { return }
+                        Haptics.impact(.light)
+                        showAvatarFullscreen = true
+                    } label: {
+                        AvatarView(
+                            avatarRef: model.avatarRef,
+                            name: model.name.isEmpty ? "?" : model.name,
+                            accent: Color(hex: HomeViewModel.parseHex(model.accentHex) ?? 0xF5B547),
+                            size: 132,
+                            ringWidth: 2
+                        )
                     }
+                    .buttonStyle(.plain)
+                    .disabled(model.avatarRef == nil)
+                    .accessibilityLabel("Tap to view avatar")
+                    .frame(maxWidth: .infinity)
+
+                    Button {
+                        Haptics.impact(.medium)
+                        Task { _ = await model.generateAvatar() }
+                    } label: {
+                        HStack {
+                            if model.saveState == .saving {
+                                ProgressView()
+                            } else {
+                                Label("Generate avatar with AI", systemImage: "wand.and.stars")
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(model.saveState == .saving)
                 }
-                .disabled(model.saveState == .saving)
+                .padding(.vertical, Theme.Spacing.s2)
             }
 
             if case .error(let m) = model.saveState {
@@ -100,5 +121,12 @@ struct CharacterEditView: View {
         } message: {
             Text("This permanently removes the character. Existing conversations keep their character_snapshot.")
         }
+        .fullScreenCover(isPresented: $showAvatarFullscreen) {
+            AvatarFullscreenViewer(avatarRef: model.avatarRef) {
+                showAvatarFullscreen = false
+            }
+        }
     }
+
+    @State private var showAvatarFullscreen: Bool = false
 }

@@ -25,6 +25,7 @@ final class CharacterEditViewModel {
     private(set) var saveState: SaveState = .idle
     private let client: SupabaseClient
     let existingID: String?
+    var avatarRef: String?
 
     init(client: SupabaseClient, character: Character? = nil) {
         self.client = client
@@ -34,6 +35,7 @@ final class CharacterEditViewModel {
         self.scenario = character?.scenario ?? ""
         self.systemPrompt = character?.system_prompt ?? ""
         self.accentHex = character?.accent_color ?? "#F5B547"
+        self.avatarRef = character?.avatar_ref
     }
 
     var canSave: Bool {
@@ -148,6 +150,9 @@ final class CharacterEditViewModel {
             }
             struct AvatarResponse: Decodable { let avatar_ref: String? }
             let decoded = try JSONDecoder().decode(AvatarResponse.self, from: data)
+            if let newRef = decoded.avatar_ref {
+                avatarRef = newRef
+            }
             saveState = .saved
             return decoded.avatar_ref
         } catch {

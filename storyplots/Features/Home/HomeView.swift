@@ -142,7 +142,7 @@ struct HomeView: View {
 
     private var castSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s2) {
                 Text("Your cast")
                     .font(.caption.weight(.semibold))
                     .tracking(1.5)
@@ -152,14 +152,37 @@ struct HomeView: View {
                 if model.characters.count >= 3 {
                     Button(action: cycleLayout) {
                         Image(systemName: layoutMode.systemImage)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Theme.Color.brand1)
                             .frame(width: 32, height: 32)
                             .background(Theme.Color.bg2, in: Circle())
+                            .overlay(Circle().strokeBorder(Theme.Color.borderSoft, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Change layout")
                 }
+                Menu {
+                    Button {
+                        Haptics.impact(.medium)
+                        showCreateSheet = true
+                    } label: {
+                        Label("Manual create", systemImage: "person.crop.circle.badge.plus")
+                    }
+                    Button {
+                        Haptics.impact(.medium)
+                        showGenerateSheet = true
+                    } label: {
+                        Label("Generate with AI", systemImage: "wand.and.stars")
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.Color.fgOnBrand)
+                        .frame(width: 32, height: 32)
+                        .background(Theme.Color.brandGradient, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("New persona")
             }
             .padding(.horizontal, Theme.Spacing.s4)
 
@@ -185,7 +208,6 @@ struct HomeView: View {
             ForEach(entries) { character in
                 tile(character)
             }
-            createTile
         }
         .padding(.horizontal, Theme.Spacing.s4)
     }
@@ -196,7 +218,6 @@ struct HomeView: View {
             ForEach(entries) { character in
                 circle(character)
             }
-            createCircle
         }
         .padding(.horizontal, Theme.Spacing.s4)
     }
@@ -206,7 +227,6 @@ struct HomeView: View {
             ForEach(entries) { character in
                 listRow(character)
             }
-            createListRow
         }
         .padding(.horizontal, Theme.Spacing.s4)
     }
@@ -284,80 +304,11 @@ struct HomeView: View {
         .buttonStyle(.plain)
     }
 
-    private var createTile: some View {
-        Button(action: {
-            Haptics.impact(.medium)
-            showCreateSheet = true
-        }) {
-            VStack(spacing: Theme.Spacing.s2) {
-                Image(systemName: "plus")
-                    .font(.system(size: 32, weight: .semibold))
-                    .foregroundStyle(Theme.Color.brand1)
-                Text("New persona")
-                    .font(Theme.FontStyle.meta.weight(.semibold))
-                    .foregroundStyle(Theme.Color.fg2)
-            }
-            .frame(maxWidth: .infinity)
-            .aspectRatio(1, contentMode: .fit)
-            .background(Theme.Color.bg2.opacity(0.4), in: RoundedRectangle(cornerRadius: Theme.Radius.card))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.card)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                    .foregroundStyle(Theme.Color.brand1.opacity(0.55))
-            )
-        }
-        .buttonStyle(.plain)
-    }
+    
 
-    private var createCircle: some View {
-        Button(action: {
-            Haptics.impact(.medium)
-            showCreateSheet = true
-        }) {
-            VStack(spacing: Theme.Spacing.s2) {
-                ZStack {
-                    Circle()
-                        .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                        .foregroundStyle(Theme.Color.brand1.opacity(0.65))
-                        .frame(width: 64, height: 64)
-                    Image(systemName: "plus")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(Theme.Color.brand1)
-                }
-                Text("New")
-                    .font(Theme.FontStyle.timestamp.weight(.semibold))
-                    .foregroundStyle(Theme.Color.fg2)
-            }
-        }
-        .buttonStyle(.plain)
-    }
+    
 
-    private var createListRow: some View {
-        Button(action: {
-            Haptics.impact(.medium)
-            showCreateSheet = true
-        }) {
-            HStack(spacing: Theme.Spacing.s3) {
-                Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Theme.Color.brand1)
-                    .frame(width: 48, height: 48)
-                    .background(Theme.Color.brand1.opacity(0.18), in: Circle())
-                Text("Create new persona")
-                    .font(Theme.FontStyle.body.weight(.semibold))
-                    .foregroundStyle(Theme.Color.brand1)
-                Spacer(minLength: 0)
-            }
-            .padding(Theme.Spacing.s3)
-            .background(Theme.Color.bg2.opacity(0.5), in: RoundedRectangle(cornerRadius: Theme.Radius.card))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.card)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                    .foregroundStyle(Theme.Color.brand1.opacity(0.55))
-            )
-        }
-        .buttonStyle(.plain)
-    }
+    
 
     private var searchEmptyState: some View {
         Text("No matches for '\(searchText)'")
