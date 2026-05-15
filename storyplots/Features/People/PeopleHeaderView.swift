@@ -60,16 +60,6 @@ struct PeopleHeaderView: View {
         .padding(.horizontal, Theme.Spacing.s4)
         .padding(.top, Theme.Spacing.s5)
         .padding(.bottom, Theme.Spacing.s3)
-        .background(
-            LinearGradient(
-                colors: [Theme.Color.brand1.opacity(0.15), Color.clear],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 160)
-            .frame(maxWidth: .infinity, alignment: .top)
-            .ignoresSafeArea(edges: .top)
-        )
     }
 
     private var filterPills: some View {

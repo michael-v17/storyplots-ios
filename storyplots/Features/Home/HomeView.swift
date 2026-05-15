@@ -24,6 +24,7 @@ struct HomeView: View {
             }
         }
         .background(Theme.Color.bg)
+        .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
         .refreshable {
@@ -95,7 +96,7 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, Theme.Spacing.s4)
                 .padding(.top, Theme.Spacing.s2)
-                .padding(.bottom, Theme.Spacing.s6)
+                .padding(.bottom, 100)
             }
         }
     }

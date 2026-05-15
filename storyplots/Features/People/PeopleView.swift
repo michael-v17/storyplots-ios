@@ -33,6 +33,7 @@ struct PeopleView: View {
             }
         }
         .background(Theme.Color.bg)
+        .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
         .searchable(text: Binding(
@@ -91,7 +92,7 @@ struct PeopleView: View {
                     }
                     .padding(.horizontal, Theme.Spacing.s4)
                     .padding(.top, Theme.Spacing.s2)
-                    .padding(.bottom, Theme.Spacing.s6)
+                    .padding(.bottom, 100)
                 }
             }
         }

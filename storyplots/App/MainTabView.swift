@@ -23,12 +23,10 @@ struct MainTabView: View {
 
             NavigationStack {
                 SettingsView()
-                    .navigationTitle("Settings")
-                    .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
-                    .toolbarBackgroundVisibility(.visible, for: .navigationBar)
             }
             .tabItem { Label("Settings", systemImage: "gearshape.fill") }
             .tag(Tab.settings)
         }
+        .tint(Theme.Color.brand1)
     }
 }
