@@ -22,7 +22,7 @@ struct MainTabView: View {
             .tag(Tab.people)
 
             NavigationStack {
-                SettingsPlaceholder()
+                SettingsView()
                     .navigationTitle("Settings")
                     .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
                     .toolbarBackgroundVisibility(.visible, for: .navigationBar)
