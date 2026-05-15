@@ -1,0 +1,7 @@
+# Cycle 0090 — research artifacts. Manifest + best-of selection get
+# committed in Subtask 6 by moving into ./best/. Raw 6-image dump is
+# ignored to keep the diff small.
+*.png
+manifest.json
+!best/
+!best/*.png

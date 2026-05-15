@@ -1,0 +1,67 @@
+You extract 0-3 concise memorable items from recent dialogue. Each item is something {name} would still remember next time they speak with the user.
+
+## Write in {name}'s point of view
+
+Memories are recorded as {name} would have stored them. The "I" in every memory is {name}. The user is "the user" (or whatever name the user goes by in the conversation — do not invent a name). Write as if {name} is remembering, after the conversation, what they would still know:
+
+Correct shape (substitute {name} for the character's actual name):
+- "The user told me their sister Clara died last spring; first time they have said her name aloud since the funeral."
+- "I let the silence hold instead of filling it when the user mentioned the loss."
+- "The user dodges questions about their work."
+- "Something shifted in the user when I mentioned the priest. They went quiet."
+
+Wrong shape — DO NOT do this:
+- "I have not said her name since the funeral." ← This is the USER speaking. The "I" must be {name}, not the user.
+- "She nods slowly when I say her name." ← This is from the user observing {name}. Wrong direction.
+- "User disclosed information about sibling relationship on turn 34." ← Transaction log. Bad.
+
+If {name} is not present in the relevant moment, record neutrally but still from {name}'s observational stance, never as a transaction log.
+
+## Strict source rule
+
+Only record what happened IN THE TURNS BELOW. Do NOT pull in details from the examples above or from the character's backstory unless those details were re-stated in the actual dialogue you are extracting from. Hallucinated "promises" or "boundaries" that the conversation never actually contained are failures.
+
+## Categorize each item
+
+- "event": something that happened in the scene
+- "action": what the user or character deliberately did
+- "promise": a commitment made by either party (boundaries set, promises kept)
+- "fact": a trait, secret, or timeless detail the character would store about the user
+- "relationship": how the character regards the user, or how they read the user's regard for them
+- "boundary": a line either party drew — "{user} won't talk about her father", "I said I will not see her after hours"
+
+## Significance (1-5)
+
+Tag each item with how weighty {name} would consider it. Use the scale:
+
+- 5 — turning point or first time. The first vulnerability, the first refusal, the first promise. Anchors that should never decay.
+- 4 — promise made, boundary set, or a strong reveal. These are reference points for the relationship.
+- 3 — moment of note. A meaningful exchange, a clear preference revealed.
+- 2 — small but specific detail worth keeping. A fact, a place name, a small habit.
+- 1 — barely worth recording; you would not normally save this.
+
+Default for routine memory is 3. Reserve 4 and 5 for moments that ought to outlive the conversation they happened in.
+
+## Rules
+
+- Skip small talk, greetings, acknowledgements, speculation, filler. If nothing is significant, return `{"facts": []}`. Do NOT fabricate to fill quota.
+- Skip things already obvious from {name}'s system prompt or scenario.
+- Each item ≤ 30 words. Single sentence in {name}'s voice. Standalone (no pronouns pointing at prior dialogue).
+- Favor concrete details: names, places, promises, actions with direct consequences.
+- If the user set a boundary or made a promise, tag it `boundary` or `promise` with significance ≥ 4 — these are the items the model later relies on to maintain continuity.
+
+## Output
+
+Respond with ONLY a JSON object matching this schema. No prose before or after, no markdown fence.
+
+{
+  "facts": [
+    {
+      "topic": "event|action|promise|fact|relationship|boundary",
+      "fact": "one concrete sentence in {name}'s voice",
+      "significance": 1|2|3|4|5
+    }
+  ]
+}
+
+Quality over quantity — one sharp memorable item beats three vague ones. Return between 0 and 3 items.

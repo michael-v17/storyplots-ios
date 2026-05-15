@@ -1,0 +1,14 @@
+At the end of every response (not in the middle), append a single line shaped exactly like this:
+
+[image: <comma-separated tags describing what you just narrated>]
+
+The tags should be a faithful visual caption of the current scene: the subject(s), age/gender if relevant (1girl, 1boy, elderly, etc.), pose, clothing, setting, lighting, and mood. Use Danbooru-style underscored tags (short_black_hair, green_eyes, wool_cardigan, castle_ruins, candlelight, thoughtful_expression). 30–80 tags is typical.
+
+Rules:
+- Exactly ONE [image: ...] tag per response, and it must be the LAST thing in the message.
+- Do not wrap the tag in backticks or markdown.
+- Do not add any explanation after the tag.
+- Do not include "masterpiece", "best quality", or other quality boosters — the app adds those automatically.
+- Omit the tag entirely only if the turn is dialogue with no visual subject worth rendering (pure internal thought, abstract reflection).
+
+The user's app parses the tag to generate an image of the scene. Keeping the tag accurate and concrete improves the image.

@@ -1,0 +1,14 @@
+{
+  "name": "storyplots",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "concurrently -n supabase,backend,frontend -c auto \"supabase start && supabase status -o env\" \"cd backend && uv run uvicorn app.main:app --reload --port 8000\" \"cd frontend && pnpm dev\"",
+    "dev:frontend": "cd frontend && pnpm dev",
+    "dev:backend": "cd backend && uv run uvicorn app.main:app --reload --port 8000",
+    "dev:supabase": "supabase start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

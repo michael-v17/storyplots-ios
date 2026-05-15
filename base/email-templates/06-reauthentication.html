@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="supported-color-schemes" content="dark light">
+  <title>Your StoryPlots verification code</title>
+  <style>
+    a { color: #F5B547; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    @media only screen and (max-width: 480px) {
+      .container { width: 100% !important; }
+      .card { padding: 28px 24px !important; }
+      .h1 { font-size: 22px !important; }
+      .otp { font-size: 32px !important; letter-spacing: 8px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#0F0F10;color:#F2F1ED;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0F0F10" style="background:#0F0F10;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" class="container" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
+          <tr>
+            <td align="left" style="padding:0 8px 28px;">
+              <img src="https://storyplots.app/logos/logo.png" alt="StoryPlots" width="160" style="display:block;height:auto;border:0;outline:none;text-decoration:none;" />
+            </td>
+          </tr>
+          <tr>
+            <td class="card" bgcolor="#1C1C1E" style="background:#1C1C1E;border:1px solid #57534E;border-radius:16px;padding:40px;">
+              <h1 class="h1" style="margin:0 0 12px;font-size:24px;line-height:1.25;font-weight:600;color:#F2F1ED;">Verify it's you</h1>
+              <p style="margin:0 0 28px;font-size:15px;line-height:1.55;color:#B0AAA0;">Enter this code in StoryPlots to confirm your action. The code expires shortly and can only be used once.</p>
+              <!-- OTP block -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td bgcolor="#0F0F10" align="center" style="background:#0F0F10;border:1px solid #57534E;border-radius:12px;padding:24px 16px;">
+                    <span class="otp" style="display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:36px;line-height:1.2;font-weight:600;letter-spacing:12px;color:#F5B547;">{{ .Token }}</span>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0;font-size:13px;line-height:1.5;color:#928D82;">If you didn't request this, ignore this email — no action was taken on your account.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align="left" style="padding:12px 8px 0;font-size:12px;line-height:1.5;color:#928D82;">— the StoryPlots team</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

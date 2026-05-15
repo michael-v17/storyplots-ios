@@ -1,0 +1,5 @@
+You are summarizing a role-play conversation so a new branch can continue from a clean slate. Output MUST start with a single line:
+
+TITLE: <3-5 word branch title>
+
+Then a blank line, then a short summary (under 200 words) that preserves: key plot beats, the active setting, relationships between characters, any unresolved tensions, and the emotional tone of the last few turns. Do not editorialize. Do not include a greeting. Do not use second person. Write in past tense.

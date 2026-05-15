@@ -1,0 +1,25 @@
+[project]
+name = "storyplots-backend"
+version = "0.2.0"
+description = "StoryPlots v0 backend (FastAPI, JWT-only auth)."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pyjwt[crypto]>=2.9",
+  "httpx>=0.27",
+  # Cycle 0091 — fal.ai image provider scaffold.
+  "fal-client>=0.5",
+  # Cycle 0092 — WebP compression pipeline (never store PNG).
+  "Pillow>=10.0",
+]
+
+[tool.uv]
+dev-dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

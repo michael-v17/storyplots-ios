@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>StoryPlots</title>
+    <meta name="description" content="Step into stories — create AI characters and explore a new plot with every conversation." />
+    <meta name="theme-color" content="#0F0F10" />
+
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Story Plots" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="StoryPlots" />
+    <meta property="og:title" content="StoryPlots" />
+    <meta property="og:description" content="Step into stories — create AI characters and explore a new plot with every conversation." />
+    <meta property="og:image" content="/og-image.webp" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="StoryPlots" />
+    <meta name="twitter:description" content="Step into stories — create AI characters and explore a new plot with every conversation." />
+    <meta name="twitter:image" content="/og-image.webp" />
+    <style>
+      /* SF Pro web fonts (subset shipped — Cycle 0066).
+         Other weights/styles fall back through the --sp-font stack
+         (-apple-system → SF Pro on macOS, system font elsewhere). */
+      @font-face { font-family: "SF Pro Text"; font-style: normal; font-weight: 400; src: url("/fonts/SF-Pro-Text-Regular.otf") format("opentype"); font-display: swap; }
+      @font-face { font-family: "SF Pro Text"; font-style: normal; font-weight: 600; src: url("/fonts/SF-Pro-Text-Semibold.otf") format("opentype"); font-display: swap; }
+      @font-face { font-family: "SF Pro Text"; font-style: normal; font-weight: 700; src: url("/fonts/SF-Pro-Text-Bold.otf") format("opentype"); font-display: swap; }
+      @font-face { font-family: "SF Pro Text"; font-style: italic; font-weight: 400; src: url("/fonts/SF-Pro-Text-RegularItalic.otf") format("opentype"); font-display: swap; }
+      @font-face { font-family: "SF Pro Display"; font-style: normal; font-weight: 600; src: url("/fonts/SF-Pro-Display-Semibold.otf") format("opentype"); font-display: swap; }
+      @font-face { font-family: "SF Pro Display"; font-style: normal; font-weight: 700; src: url("/fonts/SF-Pro-Display-Bold.otf") format("opentype"); font-display: swap; }
+
+      html { color-scheme: dark; }
+      /* iOS web-app layout lock (cycle 0108 polish):
+         - Full 100% height chain through html/body/#root lets the React
+           tree fill the visible area without relying on `100vh`, which on
+           iOS Safari includes the area behind the URL bar and causes the
+           document itself to become scrollable (header scrolls off,
+           composer hides under URL bar).
+         - `position: fixed; inset: 0` on body prevents the document from
+           ever scrolling — only the chat feed (or `[data-testid="content-card"]`
+           on non-chat routes) has its own internal overflow. iOS auto-
+           scrolls focused inputs into view inside the chat feed without
+           ever bumping the body.
+         - `overscroll-behavior: none` kills the rubber-band that would
+           otherwise drag the whole shell up/down at the top/bottom of
+           a scroll container. */
+      html, body, #root {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        overscroll-behavior: none;
+        width: 100%;
+      }
+
+      /* Tokenized scrollbars — replace the browser's chunky default chrome
+         with a thin, neutral-dark thumb so they recede into the surface.
+         Firefox uses scrollbar-color; WebKit uses the ::-webkit pseudos. */
+      html {
+        scrollbar-color: var(--sp-border-strong) transparent;
+        scrollbar-width: thin;
+      }
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb {
+        background: var(--sp-border-strong);
+        border-radius: 999px;
+        border: 2px solid var(--sp-bg);
+        background-clip: padding-box;
+      }
+      ::-webkit-scrollbar-thumb:hover { background: var(--sp-fg-4); background-clip: padding-box; }
+      ::-webkit-scrollbar-corner { background: transparent; }
+
+      /* Default <a>: inherit-muted, no underline. Router Links without
+         inline color pick up --sp-fg-2; surfaces that need primary
+         emphasis override via inline style. Kills the browser violet/
+         purple default. */
+      a { color: var(--sp-fg-2); text-decoration: none; transition: color var(--sp-duration-base) var(--sp-ease); }
+      a:hover { color: var(--sp-fg); }
+
+      /* Button base: inherit the app font, consistent pointer cursor on
+         enabled buttons. Disabled buttons keep OS default so a false-
+         affordance pointer isn't shown. Individual buttons apply their
+         own colors/borders. */
+      button { font: inherit; }
+      button:not(:disabled) {
+        cursor: pointer;
+        transition: transform var(--sp-duration-fast) var(--sp-ease),
+                    filter var(--sp-duration-base) var(--sp-ease);
+      }
+      button:not(:disabled):hover { filter: brightness(1.1); }
+      button:not(:disabled):active {
+        transform: scale(0.97);
+        transition-duration: var(--sp-duration-fast);
+      }
+
+      /* Search input placeholder — the search input in /characters lives
+         outside [data-form="stack"], so the stack rule doesn't cover it.
+         One explicit rule keeps the placeholder aligned to the token scale. */
+      input[type="search"]::placeholder { color: var(--sp-fg-4); }
+
+      /* Fieldset / legend — browser default is a dim medium-grey border
+         that floats awkwardly over the dark theme. Bring it into the
+         token palette so grouped form sections read as cards. */
+      fieldset {
+        border: 1px solid var(--sp-border-soft);
+        border-radius: var(--sp-radius);
+        padding: 1rem 1.25rem;
+        margin: 0;
+      }
+      legend {
+        color: var(--sp-fg-2);
+        padding: 0 0.5rem;
+        font-weight: 500;
+        font-size: 0.9em;
+      }
+
+      /* Opt-in form layout: label on its own row, input/textarea/select
+         below taking the full width of the container. Checkboxes, radios,
+         and file inputs keep their default inline sizing. */
+      [data-form="stack"] label { display: block; margin-top: 0.5rem; }
+      [data-form="stack"] label > input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+      [data-form="stack"] label > textarea,
+      [data-form="stack"] label > select {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 0.35rem;
+        padding: 0.6rem 0.8rem;
+        /* Plan 0123: --sp-border (#57534E) — stronger than border-soft so
+           the input edge is clearly defined against the elevated bg.
+           First pass moved to border-soft AND lifted bg simultaneously,
+           which left fields with too little edge contrast (floating
+           shapeless cards). Strong border on elevated bg = clear chip. */
+        border: 1px solid var(--sp-border);
+        border-radius: var(--sp-radius);
+        font: inherit;
+        /* 16 px is the iOS Safari threshold below which focusing an input
+           triggers an auto-zoom. Keep at 16 even though viewport now disables
+           user-scalable — defense in depth across browsers. */
+        font-size: 16px;
+        /* Plan 0123: lifted from --sp-bg-inset to --sp-bg-2. The deep-inset
+           tone read as "buried dark box" against the warm-gray dark theme
+           — too punched-in. Elevated bg matches the chat composer + card
+           surfaces (modern dark-app inputs sit above the page, not below). */
+        background: var(--sp-bg-2);
+        color: var(--sp-fg);
+      }
+      [data-form="stack"] label > textarea {
+        resize: vertical;
+        min-height: 2.5rem;
+        line-height: 1.5;
+      }
+      [data-form="stack"] label > input::placeholder,
+      [data-form="stack"] label > textarea::placeholder {
+        color: var(--sp-fg-4);
+      }
+      [data-form="stack"] label > input:focus,
+      [data-form="stack"] label > textarea:focus,
+      [data-form="stack"] label > select:focus {
+        outline: 2px solid var(--sp-brand-1);
+        outline-offset: 1px;
+        border-color: transparent;
+      }
+
+      /* Pill toggle primitive. Opt-in via <input type="checkbox" class="sp-toggle">.
+         Kit shape: 40×22 pill, 16px thumb, brand-1 fill when checked. */
+      .sp-toggle {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 40px;
+        height: 22px;
+        border-radius: 999px;
+        background: var(--sp-bg-3);
+        border: 1px solid var(--sp-border);
+        position: relative;
+        cursor: pointer;
+        transition: background 160ms var(--sp-ease), border-color 160ms var(--sp-ease);
+        flex-shrink: 0;
+        margin: 0;
+        vertical-align: middle;
+      }
+      .sp-toggle::before {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--sp-fg);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        transition: transform 160ms var(--sp-ease);
+      }
+      .sp-toggle:checked {
+        background: var(--sp-brand-1);
+        border-color: var(--sp-brand-1);
+      }
+      .sp-toggle:checked::before { transform: translateX(18px); }
+      .sp-toggle:focus-visible {
+        outline: 2px solid var(--sp-brand-1);
+        outline-offset: 2px;
+      }
+      .sp-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      /* Interactive settings-row hover feedback (opt-in via .sp-row-interactive).
+         Applied to toggle-row and radio-row labels inside group cards. */
+      .sp-row-interactive {
+        transition: background var(--sp-duration-base) var(--sp-ease);
+      }
+      .sp-row-interactive:hover { background: var(--sp-bg-3) !important; }
+
+      /* Range slider primitive. Opt-in via <input type="range" class="sp-range">.
+         Firefox gets native ::-moz-range-progress for filled portion;
+         WebKit relies on accent-color for the same effect. */
+      .sp-range {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--sp-bg-3);
+        accent-color: var(--sp-brand-1);
+        outline: none;
+        cursor: pointer;
+        margin: 0;
+      }
+      .sp-range::-webkit-slider-thumb {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--sp-fg);
+        border: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+      }
+      .sp-range::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--sp-fg);
+        border: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+      }
+      .sp-range::-moz-range-progress {
+        background: var(--sp-brand-1);
+        height: 6px;
+        border-radius: 999px;
+      }
+      .sp-range:focus-visible {
+        outline: 2px solid var(--sp-brand-1);
+        outline-offset: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

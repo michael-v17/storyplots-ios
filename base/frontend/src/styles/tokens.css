@@ -1,0 +1,487 @@
+/* ==========================================================================
+   StoryPlots Design System — Tokens
+   Copied verbatim from DesignSystem/colors_and_type.css (lines 65–274).
+   The @font-face blocks live in index.html (Cycle 0066 convention).
+   Source of truth: ../../DesignSystem/colors_and_type.css — do not edit
+   here without bumping the source first (DesignSystem is read-only during
+   implementation per CLAUDE.md §Design system).
+
+   Font subset shipped (Cycle 0066):
+     SF Pro Text:    400, 600, 700, 400 italic
+     SF Pro Display: 600, 700
+   Other weights (100/200/300/500/800/900) and SF Pro Rounded are NOT
+   shipped — they fall back through the --sp-font system stack
+   (-apple-system → SF Pro on macOS, system font elsewhere). If a future
+   cycle applies `font-weight: var(--sp-weight-medium)` (500) the
+   browser will faux-bold-synthesise from 400 on non-Apple platforms; if
+   that becomes visible, add SF-Pro-Text-Medium.otf to public/fonts/
+   and a matching @font-face block to index.html.
+   ========================================================================== */
+
+:root {
+  /* ---------- Base surface palette ----------
+     Neutral dark grays — RGB balanced (no violet, no warm brown). Lets
+     the amber signature pop as the only color in the chrome. Luminance
+     preserved within ±1 of the original violet palette so elevation
+     hierarchy (bg → bg-1 → bg-2 → bg-3) reads the same.                       */
+  --sp-bg:            #0F0F10; /* primary app bg, neutral near-black           */
+  --sp-bg-1:          #161617; /* very subtle lift (sticky headers)            */
+  --sp-bg-2:          #1C1C1E; /* elevated cards, modal sheets                 */
+  --sp-bg-3:          #252527; /* second-level cards, hover, inputs            */
+  --sp-bg-inset:      #0A0A0B; /* textarea / input inset                       */
+  --sp-overlay:       rgba(15, 15, 16, 0.72); /* modal scrim                   */
+
+  /* ---------- Border / divider ----------
+     Neutral hairlines aligned to the new bg family. Bumped from
+     near-bg values (luma ~43) to a mid-grey (luma ~88) so outlined
+     interactive elements (ghost pills, tabs, inputs) read clearly
+     against bg-2; previous values matched surfaces too closely
+     and produced "carved" looking outlines on dark cards.            */
+  /* Plan 0123: borders re-hued from zinc (cool, R=G<B) to stone (warm,
+     R>G>B by 1–2). Same luminance, harmonizes with amber brand. */
+  --sp-border:        #57534E; /* low-contrast hairlines                       */
+  --sp-border-soft:   #44403C; /* softer (group dividers)                      */
+  --sp-border-strong: #78716C; /* focused / hovered                            */
+
+  /* ---------- Foreground / text ----------
+     Plan 0123: re-hued from violet (B>G>R, PersonaLLM legacy) to warm
+     amber-gray (R>G>B by 1–3 along hue ~40°). Same luminance ramp —
+     fg → fg-1 → fg-2 → fg-3 → fg-4 reads identical to before. Contrast
+     vs --sp-bg-2 preserved: fg-3 still ≥4.5:1 (WCAG AA large/UI). The
+     warm tilt lets the amber brand signature live in the same hue family
+     as the chrome instead of competing with a cool secondary palette. */
+  --sp-fg:            #F2F1ED; /* near-white, primary copy                     */
+  --sp-fg-1:          #D8D5CC; /* body copy                                    */
+  --sp-fg-2:          #B0AAA0; /* secondary copy                               */
+  --sp-fg-3:          #928D82; /* muted, section labels, hints                 */
+  --sp-fg-4:          #6E695F; /* placeholder, disabled                        */
+
+  /* ---------- Brand gradient (wordmark, primary CTAs) ----------
+     StoryPlots signature: warm amber → sunset orange. Inspired by the
+     light bloom in the auth-hero image and the lamp-light / parchment
+     mood that fits a story-craft product. Replaces the violet+teal
+     palette inherited from PersonaLLM references.                              */
+  --sp-brand-1:       #F5B547; /* warm amber (signature)                       */
+  --sp-brand-2:       #FF7B3D; /* sunset orange (gradient end)                 */
+  --sp-brand-grad:    linear-gradient(135deg, #F5B547 0%, #FF7B3D 100%);
+  --sp-brand-grad-45: linear-gradient(135deg, #F5B547 0%, #FF7B3D 100%);
+  /* High-contrast text for surfaces sitting on top of brand bg
+     (primary buttons). True black > the near-black --sp-bg here
+     because amber/sunset is light enough that even a near-black
+     reads slightly muddy.                                                        */
+  --sp-fg-on-brand:   #000000;
+
+  /* ---------- Semantic ---------- */
+  --sp-destructive:   #E04747; /* delete, erase                                */
+  --sp-destructive-soft: rgba(224, 71, 71, 0.15);
+  --sp-success:       #2ECC71;
+  --sp-success-soft:  rgba(46, 204, 113, 0.15);
+  --sp-warning:       #F59E0B;
+  --sp-warning-soft:  rgba(245, 158, 11, 0.15);
+
+  /* ---------- Character accent presets (16 + custom) ----------
+     Per-character theme drives bubble fill, scenario border,
+     rail chip tint, mode pill, avatar glow, CTAs.                            */
+  --sp-accent-violet: #8B5CF6;
+  --sp-accent-indigo: #6366F1;
+  --sp-accent-blue:   #3B82F6;
+  --sp-accent-sky:    #0EA5E9;
+  --sp-accent-teal:   #14B8A6;
+  --sp-accent-green:  #2ECC71; /* Clara Moretti                                */
+  --sp-accent-lime:   #84CC16;
+  --sp-accent-amber:  #F59E0B;
+  --sp-accent-bronze: #C9A34C; /* Socrates of Athens                            */
+  --sp-accent-orange: #F97316;
+  --sp-accent-red:    #E04747; /* AXIOM-7                                      */
+  --sp-accent-pink:   #EC4899;
+  --sp-accent-rose:   #F43F5E;
+  --sp-accent-fuchsia:#D946EF;
+  --sp-accent-slate:  #94A3B8;
+  --sp-accent-stone:  #A8A29E;
+
+  /* Active char accent (chat scope overrides via data-character-id).
+     Components read these two vars and forget about the specific color.
+     Default falls back to brand-1 (amber) so chrome highlights outside
+     the chat scope (sidebar nav active state, settings active stripe,
+     etc.) read on-brand instead of leaking the legacy violet accent.        */
+  --char-accent:        var(--sp-brand-1);
+  --char-accent-soft:   color-mix(in oklab, var(--char-accent) 18%, transparent);
+  --char-accent-softer: color-mix(in oklab, var(--char-accent) 10%, transparent);
+  --char-accent-border: color-mix(in oklab, var(--char-accent) 55%, transparent);
+  --char-accent-glow:   color-mix(in oklab, var(--char-accent) 40%, transparent);
+
+  /* ---------- Type scale ----------
+     Two optical sizes, matching Apple's own usage:
+       --sp-font         → SF Pro Text (body, UI, chat)
+       --sp-font-display → SF Pro Display (headings ≥ 22 px)
+       --sp-font-rounded → SF Pro Rounded (reserved for friendly surfaces)
+     System fallbacks keep things sane if the OTFs ever fail to load.  */
+  --sp-font:         "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --sp-font-display: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --sp-font-rounded: "SF Pro Rounded", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+  --sp-font-mono:    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --sp-text-xs:   12px;  /* timestamps, caption                 */
+  --sp-text-sm:   13px;  /* chips, meta                          */
+  --sp-text-base: 16px;  /* body, chat (16 = iOS no-auto-zoom threshold) */
+  --sp-text-md:   16px;  /* input, list title                    */
+  --sp-text-lg:   18px;  /* subhead                              */
+  --sp-text-xl:   22px;  /* section title                        */
+  --sp-text-2xl:  28px;  /* screen title (Basic Info)            */
+  --sp-text-3xl:  34px;  /* marketing                            */
+
+  --sp-weight-regular:  400;
+  --sp-weight-medium:   500;
+  --sp-weight-semibold: 600;
+  --sp-weight-bold:     700;
+
+  --sp-lh-tight: 1.2;
+  --sp-lh-body:  1.5;
+  --sp-lh-loose: 1.7;
+
+  --sp-tracking-caps:    0.08em; /* SECTION LABEL          */
+  --sp-tracking-tight:   -0.01em;/* large headings         */
+
+  /* ---------- Radii ----------
+     One-radius system: a single 14px curve for every geometric
+     surface (buttons, inputs, cards, panels, modals, bubbles, tabs,
+     sectionCards, dropdowns). Circles (50%) for avatars and action
+     chips. Pill (999) reserved for true semantic pills only —
+     scrollbar thumb, .sp-toggle track, .sp-range track + progress fill.
+     The previous sm/md/lg/xl scale created visual noise without
+     hierarchy benefit; this collapse is the StoryPlots radius signature. */
+  --sp-radius:       14px;  /* THE radius — buttons, inputs, cards, bubbles, modals */
+  --sp-radius-sheet: 20px;  /* iOS-style sheet top corners (auth, mobile shell, chat) */
+  --sp-radius-pill:  999px; /* semantic pill ONLY (sp-toggle / sp-range / scrollbar) */
+
+  /* ---------- Spacing (8-pt, with a 4-pt nudge) ---------- */
+  --sp-space-0: 0;
+  --sp-space-1: 4px;
+  --sp-space-2: 8px;
+  --sp-space-3: 12px;
+  --sp-space-4: 16px;  /* screen edge padding      */
+  --sp-space-5: 20px;
+  --sp-space-6: 24px;  /* section spacing          */
+  --sp-space-8: 32px;
+  --sp-space-10: 40px;
+  --sp-space-12: 48px;
+
+  /* ---------- Shadows / elevation ---------- */
+  --sp-shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.4);
+  --sp-shadow-md:  0 4px 12px rgba(0, 0, 0, 0.4);
+  --sp-shadow-lg:  0 16px 40px rgba(0, 0, 0, 0.55);
+  --sp-shadow-glow: 0 0 0 3px var(--char-accent-glow);
+  --sp-shadow-ring: 0 0 24px -4px var(--char-accent-glow);
+
+  /* ---------- Motion ---------- */
+  --sp-ease:        cubic-bezier(0.2, 0.8, 0.2, 1); /* spring-ish default      */
+  --sp-ease-in:     cubic-bezier(0.4, 0, 1, 1);
+  --sp-ease-out:    cubic-bezier(0, 0, 0.2, 1);
+  --sp-duration-fast:   120ms;
+  --sp-duration-base:   200ms;
+  --sp-duration-slow:   320ms;
+}
+
+/* Plan 0123: CSS variable substitution gotcha — the four derived
+   --char-accent-* values defined inside :root with color-mix(...
+   var(--char-accent) ...) get pre-resolved against root's
+   --char-accent fallback (amber). Descendants that override
+   --char-accent (chat scope, character tiles) inherit the
+   amber-mixed values. Fix: re-declare the derived vars on every
+   element that sets --char-accent inline so the cascade resolves
+   against the local --char-accent value. */
+[style*="--char-accent"] {
+  --char-accent-soft:   color-mix(in oklab, var(--char-accent) 18%, transparent);
+  --char-accent-softer: color-mix(in oklab, var(--char-accent) 10%, transparent);
+  --char-accent-border: color-mix(in oklab, var(--char-accent) 55%, transparent);
+  --char-accent-glow:   color-mix(in oklab, var(--char-accent) 40%, transparent);
+}
+
+/* ---------------------------- Element defaults ---------------------------- */
+html, body {
+  background: var(--sp-bg);
+  color: var(--sp-fg);
+  font-family: var(--sp-font);
+  font-size: var(--sp-text-base);
+  line-height: var(--sp-lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Plan 0123: on the persistent (L) breakpoint (≥1025px) the body bg picks
+   up the lighter --sp-bg-2 sidebar tone so Safari's chrome reads as one
+   continuous surface — no dark sliver behind rubber-band scrolling or the
+   sidebar+content seam. Mobile keeps --sp-bg (single dark sheet). */
+@media (min-width: 1025px) {
+  html, body {
+    background: var(--sp-bg-2);
+  }
+}
+
+/* Semantic type classes — pair with native elements.
+   Headings use SF Pro Display (optical size for 22 px+). */
+.sp-h1 {
+  font-family: var(--sp-font-display);
+  font-size: var(--sp-text-3xl);
+  font-weight: var(--sp-weight-bold);
+  letter-spacing: var(--sp-tracking-tight);
+  line-height: var(--sp-lh-tight);
+}
+.sp-h2 {
+  font-family: var(--sp-font-display);
+  font-size: var(--sp-text-2xl);
+  font-weight: var(--sp-weight-bold);
+  letter-spacing: var(--sp-tracking-tight);
+  line-height: var(--sp-lh-tight);
+}
+.sp-h3 {
+  font-family: var(--sp-font-display);
+  font-size: var(--sp-text-xl);
+  font-weight: var(--sp-weight-semibold);
+  line-height: var(--sp-lh-tight);
+}
+.sp-subhead {
+  font-size: var(--sp-text-lg);
+  font-weight: var(--sp-weight-semibold);
+  color: var(--sp-fg);
+}
+.sp-body {
+  font-size: var(--sp-text-base);
+  color: var(--sp-fg-1);
+  line-height: var(--sp-lh-body);
+}
+.sp-meta {
+  font-size: var(--sp-text-sm);
+  color: var(--sp-fg-3);
+}
+.sp-timestamp {
+  font-size: var(--sp-text-xs);
+  color: var(--sp-fg-4);
+}
+/* Small-caps uppercase section label — omnipresent in settings surfaces. */
+.sp-section-label {
+  font-size: var(--sp-text-xs);
+  font-weight: var(--sp-weight-semibold);
+  letter-spacing: var(--sp-tracking-caps);
+  text-transform: uppercase;
+  color: var(--sp-fg-3);
+}
+/* Chat narration — italic, muted by a hair on dark background. */
+.sp-narration {
+  font-style: italic;
+  color: var(--sp-fg-2);
+}
+/* Chat dialogue — plain, full contrast. */
+.sp-dialogue {
+  color: var(--sp-fg);
+}
+/* Section / page title heading. Was using the brand gradient for text
+   fill; now solid white per design decision — amber stays reserved for
+   actions (buttons, links, chips). White section titles also match the
+   white-glow logo PNG used in auth/sidebar, keeping the brand voice
+   consistent.                                                                  */
+.sp-wordmark {
+  font-weight: var(--sp-weight-bold);
+  letter-spacing: var(--sp-tracking-tight);
+  color: var(--sp-fg);
+}
+
+/* Page H1 marker. Shown on desktop (≥1025px) as the hero heading;
+   hidden on mobile/drawer breakpoints where AppShell's topbar already
+   renders the page title (modal-style centered label, PersonaLLM-faithful). */
+.sp-page-h1 { display: block; }
+@media (max-width: 1024px) {
+  .sp-page-h1 { display: none; }
+}
+
+/* Settings sub-route back button (desktop). Sits right-aligned inside the
+   page header flex container beside the h1. On mobile the entire
+   .sp-settings-header is hidden — the AppShell topbar renders the back arrow. */
+.sp-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: var(--sp-fg-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 120ms var(--sp-ease);
+  line-height: 1;
+}
+.sp-back-btn:hover { color: var(--sp-fg); }
+
+/* Hide the in-page settings header on mobile — AppShell topbar handles title
+   and back navigation there. */
+@media (max-width: 1024px) {
+  .sp-settings-header { display: none !important; }
+  /* Main page headers (Characters, Gallery, Grammar) — h1 already hidden by
+     sp-page-h1, but the container's marginBottom still creates dead space.
+     Remove the whole header on mobile so topbar flows straight into content. */
+  .sp-main-header { display: none !important; }
+}
+
+/* Spin animation. Applied via `.sp-spin` on any element (used by Spinner
+   component wrapping Lucide Loader2). */
+@keyframes sp-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.sp-spin {
+  animation: sp-spin 900ms linear infinite;
+}
+
+/* Typing dots animation for chat streaming placeholder. Same vocabulary
+   used by the page-level loader (`Spinner` component) so the user sees
+   the "system is thinking" pulse everywhere — chat streaming, route
+   gating, panel data fetches. */
+@keyframes sp-dot-pulse {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+  40%            { opacity: 1;    transform: scale(1);   }
+}
+.sp-typing-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: sp-dot-pulse 1.2s ease-in-out infinite;
+}
+.sp-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.sp-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Shimmer wave for SkeletonCard surfaces. Renders a soft moving gradient
+   across the ghost tile — used by `<SkeletonCard />` and `<SkeletonGrid />`
+   on Home / Characters / Gallery while the real data resolves. The
+   gradient sits on the bg-3 base (matches input/raised surface tone)
+   with a faint bg-2 lift sliding right-to-left. */
+@keyframes sp-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.sp-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--sp-bg-3) 0%,
+    var(--sp-bg-2) 40%,
+    var(--sp-bg-3) 80%
+  );
+  background-size: 200% 100%;
+  animation: sp-shimmer 1.6s linear infinite;
+  border-radius: var(--sp-radius);
+}
+
+/* ---- Press scale (DS spec: 120ms press → scale 0.97) ----
+   Applies to every enabled button and every anchor. The transform
+   is instantaneous on press-down (tactile feel); elements that
+   already declare `transition: transform` in their own style get
+   the smooth return animation for free.                           */
+button:not(:disabled):active,
+a:not([aria-busy="true"]):not([aria-disabled="true"]):active {
+  transform: scale(0.97);
+}
+
+/* ---- Character card hover lift ----
+   CharacterCard already declares `transition: transform 200ms var(--sp-ease),
+   box-shadow 200ms var(--sp-ease)` in its inline style; this adds the target
+   hover state so that transition actually fires.                  */
+.sp-char-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sp-shadow-md);
+}
+
+/* ---- Settings / list row hover bg ---- */
+.sp-settings-row:not([aria-current]):hover,
+.sp-settings-row:not(.sp-row-active):hover {
+  background: var(--sp-bg-3);
+}
+
+/* ---- Page content fade-in ----
+   Add className="sp-page-content" to the outermost scrollable
+   element in each route so content fades in on navigation.       */
+@keyframes sp-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+.sp-page-content {
+  animation: sp-fade-in 220ms var(--sp-ease-out) both;
+}
+
+/* ---- Drawer slide animation (cycle 0109) ----
+   Always-mounted backdrop + panel driven by `data-open` so the CSS
+   transition runs on every open/close. Panel slides in from -100% on
+   the X axis; backdrop fades opacity 0 → 1. Panel bg matches `--sp-bg`
+   so it reads as a continuation of the page rather than a layered card. */
+.sp-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--sp-overlay);
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms var(--sp-ease);
+}
+.sp-drawer-backdrop[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.sp-drawer-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: 41;
+  background: var(--sp-bg);
+  transform: translateX(-100%);
+  transition: transform 220ms var(--sp-ease);
+  will-change: transform;
+}
+.sp-drawer-panel[data-open="true"] {
+  transform: translateX(0);
+}
+
+/* ---- Characters filter bar (cycle 0109) ----
+   Single-row container: search + layout-toggle. On mobile (≤1024 px —
+   drawer breakpoint) becomes `position: sticky; top: 0` so the search
+   stays reachable while scrolling through long character lists. On
+   desktop the persistent sidebar provides its own scroll context so
+   stickiness isn't needed. */
+.sp-characters-filterbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+  background: var(--sp-bg);
+  padding: 0.5rem 0 0.65rem;
+}
+.sp-characters-filterbar-top {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+@media (max-width: 1024px) {
+  .sp-characters-filterbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+}
+
+/* ---- Character grid (cycle 0109) ----
+   Mobile (≤640): exactly 2 columns, snug 12px gap — Crushon / Character.AI
+   pattern. Tablet+desktop: auto-fill cards at ≥200 px wide so the grid
+   breathes from 4 cols on narrow desktops up to 6+ on ultrawide while
+   never shrinking a card below the legibility floor. */
+.sp-character-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+@media (max-width: 640px) {
+  .sp-character-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
