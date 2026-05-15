@@ -6,6 +6,7 @@ struct ChatView: View {
     @State private var model: ChatViewModel
     @State private var draft: String = ""
     @State private var pinnedToBottom: Bool = true
+    @State private var activePanel: ChatPanel?
 
     init(conversationID: String,
          character: Character?,
@@ -69,6 +70,12 @@ struct ChatView: View {
                         .foregroundStyle(Theme.Color.fg)
                 }
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                ChatPanelsMenuButton(presented: $activePanel)
+            }
+        }
+        .sheet(item: $activePanel) { panel in
+            ChatPanelSheet(panel: panel)
         }
         .task { if model.loadState == .idle { await model.load() } }
     }
