@@ -14,6 +14,7 @@ struct CharacterLandingView: View {
     @State private var creating: Bool = false
     @State private var startError: String?
     @State private var newConversationID: String?
+    @State private var startProgressLabel: String = "Starting…"
 
     var body: some View {
         ScrollView {
@@ -143,7 +144,7 @@ struct CharacterLandingView: View {
                     if creating {
                         ProgressView().tint(accent)
                     }
-                    Text(creating ? "Starting…" : "Start this scene")
+                    Text(creating ? startProgressLabel : "Start this scene")
                         .font(Theme.FontStyle.body.weight(.semibold))
                         .foregroundStyle(accent)
                     Spacer(minLength: 0)
@@ -189,17 +190,31 @@ struct CharacterLandingView: View {
         guard !creating else { return }
         creating = true
         startError = nil
+        startProgressLabel = "Starting…"
         Haptics.impact(.medium)
         Task {
             do {
-                let conversationID = try await createConversation(scenarioBody: scenarioBody)
+                let conversationID = try await createConversationWithRetry(scenarioBody: scenarioBody)
                 creating = false
                 newConversationID = conversationID
             } catch {
                 landingLog.error("create conversation failed: \(error.localizedDescription, privacy: .public)")
-                startError = "Couldn't start a conversation. Try again."
+                startError = "Couldn't start a conversation. Check your connection and try again."
                 creating = false
             }
+        }
+    }
+
+    private func createConversationWithRetry(scenarioBody: String?) async throws -> String {
+        do {
+            return try await createConversation(scenarioBody: scenarioBody)
+        } catch {
+            // Backend may be cold-starting on Render Free — give it a second
+            // and try once more before surfacing an error.
+            startProgressLabel = "Waking up the backend…"
+            landingLog.info("first attempt failed (likely cold start), retrying once")
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            return try await createConversation(scenarioBody: scenarioBody)
         }
     }
 

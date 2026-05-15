@@ -7,14 +7,18 @@ struct storyplotsApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
-        // Bump the shared URLCache so AsyncImage can hold many more avatars +
-        // generated images in memory and on disk during a session. Signed URLs
-        // rotate per Supabase TTL, so this is intra-session caching; cross-
-        // launch image caching by stable storage_ref would need a custom cache.
         URLCache.shared = URLCache(
             memoryCapacity: 50 * 1024 * 1024,
             diskCapacity: 300 * 1024 * 1024
         )
+        // Render Free plan sleeps after ~15 min of inactivity. Fire a cheap
+        // GET in the background at launch so the first user-driven request
+        // doesn't have to wait for the cold start.
+        Task.detached(priority: .utility) {
+            var request = URLRequest(url: BackendConfig.url.appendingPathComponent("health"))
+            request.timeoutInterval = 60
+            _ = try? await URLSession.shared.data(for: request)
+        }
     }
 
     var body: some Scene {
