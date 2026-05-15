@@ -5,14 +5,12 @@ import SwiftUI
 struct MainTabView: View {
     enum Tab: Hashable { case home, people, settings }
     @State private var selection: Tab = .home
+    @Environment(AuthStore.self) private var auth
 
     var body: some View {
         TabView(selection: $selection) {
             NavigationStack {
-                HomePlaceholder()
-                    .navigationTitle("Home")
-                    .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
-                    .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+                HomeView(client: auth.client)
             }
             .tabItem { Label("Home", systemImage: "bubble.left.and.bubble.right.fill") }
             .tag(Tab.home)
