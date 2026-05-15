@@ -69,6 +69,19 @@ struct CharacterChatsView: View {
                         .foregroundStyle(Theme.Color.fg)
                 }
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    CharacterEditView(
+                        client: client,
+                        character: character,
+                        onSaved: { },
+                        onDeleted: { }
+                    )
+                } label: {
+                    Text("Edit")
+                        .foregroundStyle(Theme.Color.brand1)
+                }
+            }
         }
     }
 

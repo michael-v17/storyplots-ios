@@ -6,94 +6,91 @@ struct SettingsView: View {
     @State private var path = NavigationPath()
 
     var body: some View {
-        VStack(spacing: 0) {
-            SettingsHeaderView()
-            Form {
-                Section {
-                    NavigationLink(value: SettingsDestination.profile) {
-                        heroCard
-                    }
-                    .listRowBackground(
-                        LinearGradient(
-                            colors: [Theme.Color.brand1.opacity(0.18), Theme.Color.brand2.opacity(0.08)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+        Form {
+            Section {
+                NavigationLink(value: SettingsDestination.profile) {
+                    heroCard
+                }
+                .listRowBackground(
+                    LinearGradient(
+                        colors: [Theme.Color.brand1.opacity(0.18), Theme.Color.brand2.opacity(0.08)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-                }
+                )
+            }
 
-                Section("Engines") {
-                    NavigationLink(value: SettingsDestination.textEngine) {
-                        brandLabel("Text Engine", systemImage: "text.bubble")
-                    }
-                    NavigationLink(value: SettingsDestination.imageEngine) {
-                        brandLabel("Image Engine", systemImage: "photo.stack")
-                    }
-                    NavigationLink(value: SettingsDestination.memoryEngine) {
-                        brandLabel("Memory Engine", systemImage: "brain")
-                    }
-                    NavigationLink(value: SettingsDestination.voice) {
-                        brandLabel("Voice", systemImage: "waveform")
-                    }
+            Section("Engines") {
+                NavigationLink(value: SettingsDestination.textEngine) {
+                    brandLabel("Text Engine", systemImage: "text.bubble")
                 }
-
-                Section("Writing") {
-                    NavigationLink(value: SettingsDestination.roleplay) {
-                        brandLabel("Roleplay", systemImage: "theatermasks")
-                    }
-                    NavigationLink(value: SettingsDestination.writingStyles) {
-                        brandLabel("Writing styles", systemImage: "pencil.and.outline")
-                    }
-                    NavigationLink(value: SettingsDestination.grammarDashboard) {
-                        brandLabel("Grammar dashboard", systemImage: "chart.bar.doc.horizontal")
-                    }
-                    NavigationLink(value: SettingsDestination.grammar) {
-                        brandLabel("Grammar settings", systemImage: "checkmark.bubble")
-                    }
+                NavigationLink(value: SettingsDestination.imageEngine) {
+                    brandLabel("Image Engine", systemImage: "photo.stack")
                 }
-
-                Section("Experience") {
-                    NavigationLink(value: SettingsDestination.visualRoleplay) {
-                        brandLabel("Visual roleplay", systemImage: "photo.artframe")
-                    }
-                    NavigationLink(value: SettingsDestination.promptEditor) {
-                        brandLabel("Prompt editor", systemImage: "doc.text")
-                    }
-                    NavigationLink(value: SettingsDestination.memoryUser) {
-                        brandLabel("Memory", systemImage: "brain.head.profile")
-                    }
+                NavigationLink(value: SettingsDestination.memoryEngine) {
+                    brandLabel("Memory Engine", systemImage: "brain")
                 }
-
-                Section("App") {
-                    NavigationLink(value: SettingsDestination.privacy) {
-                        brandLabel("Privacy & Data", systemImage: "lock.shield")
-                    }
-                    NavigationLink(value: SettingsDestination.about) {
-                        brandLabel("About", systemImage: "info.circle")
-                    }
-                }
-
-                Section {
-                    Button(role: .destructive) {
-                        Haptics.notify(.warning)
-                        Task { await auth.signOut() }
-                    } label: {
-                        if auth.isLoading {
-                            ProgressView()
-                        } else {
-                            Text("Sign out")
-                        }
-                    }
-                    .disabled(auth.isLoading)
+                NavigationLink(value: SettingsDestination.voice) {
+                    brandLabel("Voice", systemImage: "waveform")
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.Color.bg)
+
+            Section("Writing") {
+                NavigationLink(value: SettingsDestination.roleplay) {
+                    brandLabel("Roleplay", systemImage: "theatermasks")
+                }
+                NavigationLink(value: SettingsDestination.writingStyles) {
+                    brandLabel("Writing styles", systemImage: "pencil.and.outline")
+                }
+                NavigationLink(value: SettingsDestination.grammarDashboard) {
+                    brandLabel("Grammar dashboard", systemImage: "chart.bar.doc.horizontal")
+                }
+                NavigationLink(value: SettingsDestination.grammar) {
+                    brandLabel("Grammar settings", systemImage: "checkmark.bubble")
+                }
+            }
+
+            Section("Experience") {
+                NavigationLink(value: SettingsDestination.visualRoleplay) {
+                    brandLabel("Visual roleplay", systemImage: "photo.artframe")
+                }
+                NavigationLink(value: SettingsDestination.promptEditor) {
+                    brandLabel("Prompt editor", systemImage: "doc.text")
+                }
+                NavigationLink(value: SettingsDestination.memoryUser) {
+                    brandLabel("Memory", systemImage: "brain.head.profile")
+                }
+            }
+
+            Section("App") {
+                NavigationLink(value: SettingsDestination.privacy) {
+                    brandLabel("Privacy & Data", systemImage: "lock.shield")
+                }
+                NavigationLink(value: SettingsDestination.about) {
+                    brandLabel("About", systemImage: "info.circle")
+                }
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    Haptics.notify(.warning)
+                    Task { await auth.signOut() }
+                } label: {
+                    if auth.isLoading {
+                        ProgressView()
+                    } else {
+                        Text("Sign out")
+                    }
+                }
+                .disabled(auth.isLoading)
+            }
         }
+        .scrollContentBackground(.hidden)
         .background(Theme.Color.bg)
-        .brandTopWash()
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+        .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .navigationDestination(for: SettingsDestination.self) { dest in
             switch dest {
             case .textEngine:        TextEngineSettingsView(client: auth.client)

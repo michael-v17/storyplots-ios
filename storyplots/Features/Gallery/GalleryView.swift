@@ -171,6 +171,7 @@ struct GalleryTile: View {
     let onTap: () -> Void
 
     @State private var url: URL?
+    @State private var didResolve: Bool = false
 
     var body: some View {
         Button(action: onTap) {
@@ -188,7 +189,7 @@ struct GalleryTile: View {
                             placeholder
                         }
                     }
-                } else if image.sfw_blocked == true {
+                } else if didResolve || image.sfw_blocked == true {
                     placeholder
                 } else {
                     ProgressView().tint(Theme.Color.brand1)
@@ -209,19 +210,21 @@ struct GalleryTile: View {
     }
 
     private var placeholder: some View {
-        Image(systemName: image.sfw_blocked == true ? "eye.slash.fill" : "photo")
-            .font(.system(size: 22))
-            .foregroundStyle(Theme.Color.fg3)
-            .frame(maxWidth: .infinity)
-            .aspectRatio(1, contentMode: .fit)
-            .background(Theme.Color.bg2)
+        ZStack {
+            Theme.Color.bg2
+            Image(systemName: image.sfw_blocked == true ? "eye.slash.fill" : "photo")
+                .font(.system(size: 26))
+                .foregroundStyle(Theme.Color.fg4)
+        }
     }
 
     private func loadURL() async {
-        url = await SupabaseStorageHelper.shared.displayURL(
+        let resolved = await SupabaseStorageHelper.shared.displayURL(
             engine: image.engine,
             externalURL: image.external_url,
             storageRef: image.storage_ref
         )
+        url = resolved
+        didResolve = true
     }
 }
