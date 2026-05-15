@@ -1,4 +1,5 @@
 import SwiftUI
+import Supabase
 
 /// Routes the chat toolbar ⋯ menu to one of the side-panel sheets
 /// (Memory, Grammar, Lorebook, Author's Note, Generation Override,
@@ -54,29 +55,24 @@ struct ChatPanelsMenuButton: View {
 /// its real CRUD lands. Tap-through stops here.
 struct ChatPanelSheet: View {
     let panel: ChatPanel
-    @Environment(\.dismiss) private var dismiss
+    let conversationID: String
+    let client: SupabaseClient
+    @Binding var generationOverrides: GenerationOverrides
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Label(panel.title, systemImage: panel.systemImage)
-                        .foregroundStyle(Theme.Color.fg)
-                }
-                Section {
-                    Text("\(panel.title) lands as a real CRUD surface in a follow-up phase. The plumbing (menu, sheet, dismiss) is in place so the routing doesn't move.")
-                        .font(Theme.FontStyle.meta)
-                        .foregroundStyle(Theme.Color.fg3)
-                }
-            }
-            .navigationTitle(panel.title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
+        switch panel {
+        case .memory:
+            MemoryPanelView(conversationID: conversationID, client: client)
+        case .lorebook:
+            LorebookPanelView(conversationID: conversationID, client: client)
+        case .authorsNote:
+            AuthorsNotePanelView(conversationID: conversationID, client: client)
+        case .chatControls:
+            ChatControlsPanelView(conversationID: conversationID, client: client)
+        case .generationOverride:
+            GenerationOverridePanelView(overrides: $generationOverrides)
+        case .grammar:
+            GrammarPanelView(conversationID: conversationID, client: client)
         }
-        .presentationDetents([.medium, .large])
     }
 }

@@ -7,6 +7,7 @@ struct ChatView: View {
     @State private var draft: String = ""
     @State private var pinnedToBottom: Bool = true
     @State private var activePanel: ChatPanel?
+    @State private var generationOverrides = GenerationOverrides()
     @State private var forkAnchorID: String?
     @State private var forkedConversationID: String?
     @State private var presentedImage: GeneratedImage?
@@ -81,7 +82,12 @@ struct ChatView: View {
             }
         }
         .sheet(item: $activePanel) { panel in
-            ChatPanelSheet(panel: panel)
+            ChatPanelSheet(
+                panel: panel,
+                conversationID: model.conversationID,
+                client: client,
+                generationOverrides: $generationOverrides
+            )
         }
         .sheet(item: Binding(
             get: { forkAnchorID.map { ForkAnchor(id: $0) } },
@@ -166,7 +172,7 @@ struct ChatView: View {
                                 onDelete: { model.deleteMessage(item.id) },
                                 onFork: { forkAnchorID = item.id },
                                 onSelectVariant: { idx in model.setActiveVariant(messageID: item.id, index: idx) },
-                                onRequestImage: { model.requestImage(messageID: item.id) },
+                                onRequestImage: { model.requestImage(messageID: item.id, overrides: generationOverrides) },
                                 onSelectImage: { img in
                                     withAnimation(Theme.Motion.smooth) { presentedImage = img }
                                 },

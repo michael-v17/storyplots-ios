@@ -143,16 +143,17 @@ final class ChatViewModel {
     }
 
     /// POST `/messages/{message_id}/images` and append the returned row to the
-    /// local rail.
-    func requestImage(messageID: String) {
+    /// local rail. `overrides` allows the Generation Override panel to pass
+    /// POV / framing / resolution / style / prompt overrides for this turn.
+    func requestImage(messageID: String, overrides: GenerationOverrides = GenerationOverrides()) {
         guard imageRequestState[messageID] != .loading else { return }
         imageRequestState[messageID] = .loading
         Task { [weak self] in
-            await self?.runRequestImage(messageID: messageID)
+            await self?.runRequestImage(messageID: messageID, overrides: overrides)
         }
     }
 
-    private func runRequestImage(messageID: String) async {
+    private func runRequestImage(messageID: String, overrides: GenerationOverrides) async {
         do {
             let session = try await client.auth.session
             let jwt = session.accessToken
@@ -166,8 +167,15 @@ final class ChatViewModel {
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
-            // Empty body — backend uses defaults.
-            request.httpBody = "{}".data(using: .utf8)
+
+            var body: [String: Any] = [:]
+            if let pov = overrides.pov                       { body["pov"] = pov }
+            if let shot = overrides.shotFraming              { body["shot_framing"] = shot }
+            if let res = overrides.resolutionPreset          { body["resolution_preset"] = res }
+            if let prompt = overrides.promptOverride         { body["prompt_override"] = prompt }
+            if let style = overrides.styleOverride           { body["style_override"] = style }
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
             // fal can be slow; comfyui sweeper async. Give the request room.
             request.timeoutInterval = 120
 
