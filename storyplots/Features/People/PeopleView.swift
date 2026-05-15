@@ -5,6 +5,7 @@ struct PeopleView: View {
     @State private var model: PeopleViewModel
     @State private var showCreateSheet: Bool = false
     @State private var filter: PeopleFilter = .all
+    @Namespace private var transitionNamespace
     private let client: SupabaseClient
 
     init(client: SupabaseClient) {
@@ -67,12 +68,16 @@ struct PeopleView: View {
                                     client: client,
                                     onChanged: { Task { await model.load() } }
                                 )
+                                .navigationTransition(
+                                    .zoom(sourceID: "char-\(character.id)", in: transitionNamespace)
+                                )
                             } label: {
                                 CharacterCardView(
                                     character: character,
                                     accent: model.accent(for: character),
                                     avatarRef: model.avatarRef(for: character)
                                 )
+                                .matchedTransitionSource(id: "char-\(character.id)", in: transitionNamespace)
                             }
                             .buttonStyle(.plain)
                         }

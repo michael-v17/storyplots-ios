@@ -22,9 +22,11 @@ struct SignInView: View {
                     Spacer(minLength: Theme.Spacing.s10)
 
                     VStack(spacing: Theme.Spacing.s2) {
-                        Text("StoryPlots")
-                            .font(Theme.FontStyle.h1)
-                            .foregroundStyle(Theme.Color.brandGradient)
+                        Image("Wordmark")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 260, maxHeight: 80)
+                            .accessibilityLabel("StoryPlots")
                         Text("Sign in to continue")
                             .font(Theme.FontStyle.subhead)
                             .foregroundStyle(Theme.Color.fg2)

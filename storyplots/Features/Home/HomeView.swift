@@ -4,6 +4,7 @@ import Supabase
 struct HomeView: View {
     @State private var model: HomeViewModel
     @State private var showPersonaSheet: Bool = false
+    @Namespace private var transitionNamespace
 
     init(client: SupabaseClient) {
         _model = State(initialValue: HomeViewModel(client: client))
@@ -60,12 +61,16 @@ struct HomeView: View {
                                     avatarRef: model.avatarRef(for: conv),
                                     client: model.client
                                 )
+                                .navigationTransition(
+                                    .zoom(sourceID: "card-\(conv.id)", in: transitionNamespace)
+                                )
                             } label: {
                                 ConversationCardView(
                                     conversation: conv,
                                     accent: model.accent(for: conv),
                                     avatarRef: model.avatarRef(for: conv)
                                 )
+                                .matchedTransitionSource(id: "card-\(conv.id)", in: transitionNamespace)
                             }
                             .buttonStyle(.plain)
                             .contextMenu {

@@ -9,15 +9,15 @@ struct SettingsView: View {
         Form {
             Section {
                 NavigationLink(value: SettingsDestination.profile) {
-                    HStack(spacing: Theme.Spacing.s3) {
-                        AvatarView(name: auth.userEmail ?? "You", accent: Theme.Color.brand1, size: 48, ringWidth: 1.5)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(auth.userEmail ?? "Signed-in user")
-                                .font(.headline).foregroundStyle(Theme.Color.fg)
-                            Text("Tap to view profile").font(.caption).foregroundStyle(Theme.Color.fg3)
-                        }
-                    }
+                    heroCard
                 }
+                .listRowBackground(
+                    LinearGradient(
+                        colors: [Theme.Color.brand1.opacity(0.18), Theme.Color.brand2.opacity(0.08)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
             }
 
             Section("Engines") {
@@ -58,6 +58,7 @@ struct SettingsView: View {
 
             Section {
                 Button(role: .destructive) {
+                    Haptics.notify(.warning)
                     Task { await auth.signOut() }
                 } label: {
                     if auth.isLoading {
@@ -77,6 +78,55 @@ struct SettingsView: View {
                 SettingsSectionPlaceholder(destination: dest)
             }
         }
+    }
+
+    /// Hero card for the top of Settings — large avatar, name/email, edit hint.
+    private var heroCard: some View {
+        HStack(spacing: Theme.Spacing.s4) {
+            ZStack {
+                Circle()
+                    .fill(Theme.Color.brand1.opacity(0.22))
+                    .frame(width: 72, height: 72)
+                Circle()
+                    .strokeBorder(Theme.Color.brand1.opacity(0.55), lineWidth: 2)
+                    .frame(width: 72, height: 72)
+                Text(initialsString)
+                    .font(.system(size: 28, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.Color.fg)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayName)
+                    .font(Theme.FontStyle.h3)
+                    .foregroundStyle(Theme.Color.fg)
+                    .lineLimit(1)
+                Text(auth.userEmail ?? "Signed-in user")
+                    .font(Theme.FontStyle.meta)
+                    .foregroundStyle(Theme.Color.fg2)
+                    .lineLimit(1)
+                Text("Tap to edit profile")
+                    .font(Theme.FontStyle.timestamp)
+                    .foregroundStyle(Theme.Color.brand1)
+                    .padding(.top, 2)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, Theme.Spacing.s2)
+    }
+
+    private var displayName: String {
+        if let email = auth.userEmail,
+           let local = email.split(separator: "@").first {
+            return String(local).capitalized
+        }
+        return "You"
+    }
+
+    private var initialsString: String {
+        let stem = displayName
+        let parts = stem.split(separator: " ", omittingEmptySubsequences: true).prefix(2)
+        return String(parts.compactMap { $0.first }).uppercased()
     }
 }
 
