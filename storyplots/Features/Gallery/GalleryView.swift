@@ -33,6 +33,11 @@ struct GalleryView: View {
         .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                SidebarToggleButton()
+            }
+        }
         .refreshable { await model.load() }
         .task { if model.loadState == .idle { await model.load() } }
         .fullScreenCover(item: $presentedImage) { image in

@@ -30,7 +30,7 @@ final class GalleryViewModel {
         do {
             let rows: [GeneratedImage] = try await client
                 .from("generated_images")
-                .select("id, user_id, character_id, conversation_id, message_id, prompt, refined_prompt, resolution_preset, dimensions, storage_ref, external_url, engine, style, display_url, sfw_blocked, created_at")
+                .select("id, user_id, character_id, conversation_id, message_id, prompt, refined_prompt, resolution_preset, dimensions, storage_ref, external_url, engine, style, sfw_blocked, created_at")
                 .order("created_at", ascending: false)
                 .limit(200)
                 .execute()

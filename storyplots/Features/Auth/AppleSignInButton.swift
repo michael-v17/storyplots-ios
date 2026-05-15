@@ -1,53 +1,37 @@
 import SwiftUI
-import AuthenticationServices
-import CryptoKit
-import Security
 
-/// Wraps `SignInWithAppleButton` and feeds the resulting identity token
-/// (plus the originating nonce) into `AuthStore.signInWithApple`. The
-/// SHA-256 of `nonce` is sent to Apple per its security requirement.
+/// Disabled placeholder while Apple Sign-In is gated on a paid Apple Developer
+/// account entitlement. The live `SignInWithAppleButton` lives in git history
+/// — restore it once the entitlement ships.
 struct AppleSignInButton: View {
     @Environment(AuthStore.self) private var auth
     @State private var nonce: String?
 
     var body: some View {
-        SignInWithAppleButton(.signIn) { request in
-            let fresh = Self.randomNonce()
-            nonce = fresh
-            request.requestedScopes = [.fullName, .email]
-            request.nonce = Self.sha256(fresh)
-        } onCompletion: { result in
-            handle(result)
+        // Apple Sign-In requires a paid Apple Developer account entitlement.
+        // While Personal Team development is in use, render a disabled placeholder.
+        HStack(spacing: Theme.Spacing.s2) {
+            Image(systemName: "applelogo")
+                .font(.system(size: 18, weight: .medium))
+            Text("Sign in with Apple")
+                .font(Theme.FontStyle.body.weight(.semibold))
+            Spacer(minLength: 0)
+            Text("soon")
+                .font(Theme.FontStyle.timestamp.weight(.semibold))
+                .foregroundStyle(Theme.Color.fg3)
+                .padding(.horizontal, Theme.Spacing.s2)
+                .padding(.vertical, 2)
+                .background(Theme.Color.bg3, in: Capsule())
         }
-        .signInWithAppleButtonStyle(.black)
-    }
-
-    private func handle(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                  let tokenData = credential.identityToken,
-                  let idToken = String(data: tokenData, encoding: .utf8),
-                  let storedNonce = nonce else {
-                return
-            }
-            Task { await auth.signInWithApple(idToken: idToken, nonce: storedNonce) }
-        case .failure:
-            // User canceled or a system-level failure occurred — `AuthStore` keeps its state untouched.
-            break
-        }
-    }
-
-    private static func randomNonce(length: Int = 32) -> String {
-        var bytes = [UInt8](repeating: 0, count: length)
-        let status = SecRandomCopyBytes(kSecRandomDefault, length, &bytes)
-        precondition(status == errSecSuccess, "SecRandomCopyBytes failed: \(status)")
-        return bytes.map { String(format: "%02x", $0) }.joined()
-    }
-
-    private static func sha256(_ string: String) -> String {
-        SHA256.hash(data: Data(string.utf8))
-            .map { String(format: "%02x", $0) }
-            .joined()
+        .foregroundStyle(Theme.Color.fg2)
+        .padding(.horizontal, Theme.Spacing.s4)
+        .frame(maxWidth: .infinity, minHeight: 48)
+        .background(Theme.Color.bg2, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .strokeBorder(Theme.Color.borderSoft, lineWidth: 1)
+        )
+        .opacity(0.65)
+        .accessibilityLabel("Sign in with Apple — coming soon")
     }
 }

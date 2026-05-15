@@ -36,6 +36,11 @@ struct PeopleView: View {
         .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                SidebarToggleButton()
+            }
+        }
         .searchable(text: Binding(
             get: { model.searchText },
             set: { model.searchText = $0 }

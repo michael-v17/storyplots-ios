@@ -41,6 +41,11 @@ struct HomeView: View {
         .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                SidebarToggleButton()
+            }
+        }
         .searchable(text: $searchText, prompt: "Search characters")
         .onChange(of: searchText) { _, newValue in
             model.searchText = newValue
@@ -127,12 +132,12 @@ struct HomeView: View {
             Image("Wordmark")
                 .resizable()
                 .scaledToFit()
-                .frame(maxHeight: 32)
-                .opacity(0.95)
+                .frame(maxHeight: 56)
                 .accessibilityLabel("StoryPlots")
             Spacer(minLength: 0)
         }
-        .padding(.top, Theme.Spacing.s2)
+        .padding(.top, Theme.Spacing.s3)
+        .padding(.bottom, Theme.Spacing.s2)
     }
 
     private var castSection: some View {

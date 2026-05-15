@@ -21,19 +21,24 @@ struct HomeHeaderView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(greeting)
+                Text(stemGreeting)
+                    .font(Theme.FontStyle.meta)
+                    .foregroundStyle(Theme.Color.fg3)
+                    .lineLimit(1)
+                Text(personaFirstName)
                     .font(Theme.FontStyle.h2)
                     .foregroundStyle(Theme.Color.fg)
                     .lineLimit(1)
                 Text(countLabel)
-                    .font(Theme.FontStyle.meta)
-                    .foregroundStyle(Theme.Color.fg3)
+                    .font(Theme.FontStyle.timestamp)
+                    .foregroundStyle(Theme.Color.fg4)
+                    .padding(.top, 1)
             }
 
             Spacer(minLength: 0)
         }
         .padding(.horizontal, Theme.Spacing.s4)
-        .padding(.top, Theme.Spacing.s5)
+        .padding(.top, Theme.Spacing.s2)
         .padding(.bottom, Theme.Spacing.s3)
     }
 
@@ -42,37 +47,33 @@ struct HomeHeaderView: View {
             avatarRef: personaPhotoRef,
             name: personaName ?? "You",
             accent: Theme.Color.brand1,
-            size: 48,
+            size: 56,
             ringWidth: 1.5
         )
     }
 
-    private var greeting: String {
+    private var stemGreeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
-        let stem: String
         switch hour {
-        case 5..<12:  stem = "Good morning"
-        case 12..<17: stem = "Good afternoon"
-        case 17..<22: stem = "Good evening"
-        default:      stem = "Hey"
+        case 5..<12:  return "Good morning,"
+        case 12..<17: return "Good afternoon,"
+        case 17..<22: return "Good evening,"
+        default:      return "Hey,"
         }
+    }
+
+    private var personaFirstName: String {
         if let name = personaName?.split(separator: " ").first, !name.isEmpty {
-            return "\(stem), \(name)"
+            return String(name)
         }
-        return stem
+        return "Storyteller"
     }
 
     private var countLabel: String {
         switch conversationCount {
         case 0:  return "Ready when you are."
-        case 1:  return "1 conversation"
-        default: return "\(conversationCount) conversations"
+        case 1:  return "1 character"
+        default: return "\(conversationCount) characters"
         }
-    }
-
-    private var initialsString: String {
-        guard let name = personaName, !name.isEmpty else { return "·" }
-        let parts = name.split(separator: " ", omittingEmptySubsequences: true).prefix(2)
-        return String(parts.compactMap { $0.first }).uppercased()
     }
 }
