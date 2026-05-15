@@ -1,4 +1,5 @@
 import SwiftUI
+import Supabase
 
 struct SettingsView: View {
     @Environment(AuthStore.self) private var auth
@@ -69,7 +70,12 @@ struct SettingsView: View {
             }
         }
         .navigationDestination(for: SettingsDestination.self) { dest in
-            SettingsSectionPlaceholder(destination: dest)
+            switch dest {
+            case .textEngine:
+                TextEngineSettingsView(client: auth.client)
+            default:
+                SettingsSectionPlaceholder(destination: dest)
+            }
         }
     }
 }

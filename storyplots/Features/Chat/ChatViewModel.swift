@@ -30,6 +30,8 @@ final class ChatViewModel {
     private(set) var loadState: LoadState = .idle
     private(set) var streamState: StreamState = .idle
     private(set) var items: [MessageItem] = []
+    /// All variants per assistant message id — backs the pagination dots.
+    private(set) var variantsByMessage: [String: [MessageVariant]] = [:]
 
     /// Soft alert when grammar_error or rewrite_required surfaces.
     private(set) var transientNotice: String?
@@ -65,22 +67,60 @@ final class ChatViewModel {
                 .execute()
                 .value
 
-            let variantIDs = messages.compactMap(\.active_variant_id)
-            var variantsByID: [String: MessageVariant] = [:]
-            if !variantIDs.isEmpty {
+            // Fetch ALL variants for every assistant message in this conversation —
+            // powers the dots indicator + swap-between-variants.
+            let assistantIDs = messages.filter { $0.role == .assistant }.map(\.id)
+            var byMessage: [String: [MessageVariant]] = [:]
+            var byID: [String: MessageVariant] = [:]
+            if !assistantIDs.isEmpty {
                 let variants: [MessageVariant] = try await client
                     .from("message_variants")
                     .select("id, message_id, content, created_at")
-                    .in("id", values: variantIDs)
+                    .in("message_id", values: assistantIDs)
+                    .order("created_at", ascending: true)
                     .execute()
                     .value
-                variantsByID = Dictionary(uniqueKeysWithValues: variants.map { ($0.id, $0) })
+                for v in variants {
+                    byMessage[v.message_id, default: []].append(v)
+                    byID[v.id] = v
+                }
             }
+            self.variantsByMessage = byMessage
 
-            self.items = messages.map { MessageItem(message: $0, activeVariant: $0.active_variant_id.flatMap { variantsByID[$0] }) }
+            self.items = messages.map { MessageItem(message: $0, activeVariant: $0.active_variant_id.flatMap { byID[$0] }) }
             self.loadState = .loaded
         } catch {
             self.loadState = .error(error.localizedDescription)
+        }
+    }
+
+    /// Returns (currentIndex, total) for an assistant message, or nil if no variants exist.
+    func variantPagination(for messageID: String, currentBody: String) -> (Int, Int)? {
+        guard let list = variantsByMessage[messageID], list.count > 1 else { return nil }
+        let index = list.firstIndex { $0.content == currentBody } ?? 0
+        return (index, list.count)
+    }
+
+    /// Swap the assistant message's active variant to the one at `index`.
+    func setActiveVariant(messageID: String, index: Int) {
+        guard let list = variantsByMessage[messageID], list.indices.contains(index) else { return }
+        let target = list[index]
+        // Optimistic local swap.
+        if let idx = items.firstIndex(where: { $0.id == messageID }) {
+            items[idx] = MessageItem(id: items[idx].id, role: .assistant, body: target.content, createdAt: items[idx].createdAt)
+        }
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                struct UpdatePayload: Encodable { let active_variant_id: String }
+                try await self.client
+                    .from("messages")
+                    .update(UpdatePayload(active_variant_id: target.id))
+                    .eq("id", value: messageID)
+                    .execute()
+            } catch {
+                self.streamState = .error(error.localizedDescription)
+            }
         }
     }
 

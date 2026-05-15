@@ -7,6 +7,9 @@ struct ChatView: View {
     @State private var draft: String = ""
     @State private var pinnedToBottom: Bool = true
     @State private var activePanel: ChatPanel?
+    @State private var forkAnchorID: String?
+    @State private var forkedConversationID: String?
+    private let client: SupabaseClient
 
     init(conversationID: String,
          character: Character?,
@@ -20,6 +23,7 @@ struct ChatView: View {
             avatarURL: avatarURL,
             client: client
         ))
+        self.client = client
     }
 
     var body: some View {
@@ -77,8 +81,30 @@ struct ChatView: View {
         .sheet(item: $activePanel) { panel in
             ChatPanelSheet(panel: panel)
         }
+        .sheet(item: Binding(
+            get: { forkAnchorID.map { ForkAnchor(id: $0) } },
+            set: { forkAnchorID = $0?.id }
+        )) { anchor in
+            ForkDialog(
+                conversationID: model.conversationID,
+                anchorMessageID: anchor.id,
+                client: client
+            ) { newID in
+                forkedConversationID = newID
+            }
+        }
+        .alert("Forked", isPresented: Binding(
+            get: { forkedConversationID != nil },
+            set: { if !$0 { forkedConversationID = nil } }
+        )) {
+            Button("OK") { forkedConversationID = nil }
+        } message: {
+            Text("New branch created. Go back to Home to open it.")
+        }
         .task { if model.loadState == .idle { await model.load() } }
     }
+
+    private struct ForkAnchor: Identifiable, Equatable { let id: String }
 
     @ViewBuilder
     private var messagesScroll: some View {
@@ -112,9 +138,12 @@ struct ChatView: View {
                                 accent: model.accent,
                                 characterName: model.characterName,
                                 avatarURL: model.avatarURL,
+                                variantPagination: model.variantPagination(for: item.id, currentBody: item.body),
                                 onCopy: { UIPasteboard.general.string = item.body },
                                 onRegenerate: { model.regenerate(messageID: item.id) },
-                                onDelete: { model.deleteMessage(item.id) }
+                                onDelete: { model.deleteMessage(item.id) },
+                                onFork: { forkAnchorID = item.id },
+                                onSelectVariant: { idx in model.setActiveVariant(messageID: item.id, index: idx) }
                             )
                             .id(item.id)
                         }

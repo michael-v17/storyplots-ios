@@ -8,26 +8,40 @@ struct MessageBubbleView: View {
     let accent: Color
     let characterName: String
     let avatarURL: URL?
+    /// `(currentIndex, total)` when the assistant message has >1 variant.
+    let variantPagination: (Int, Int)?
     let onCopy: () -> Void
     let onRegenerate: () -> Void
     let onDelete: () -> Void
+    let onFork: () -> Void
+    let onSelectVariant: (Int) -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.s2) {
-            if item.role == .assistant {
-                AvatarView(
-                    imageURL: avatarURL,
-                    name: characterName,
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: Theme.Spacing.s2) {
+                if item.role == .assistant {
+                    AvatarView(
+                        imageURL: avatarURL,
+                        name: characterName,
+                        accent: accent,
+                        size: 28,
+                        ringWidth: 1
+                    )
+                    bubble
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Spacer(minLength: Theme.Spacing.s6)
+                    bubble
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
+            if let (current, total) = variantPagination, item.role == .assistant {
+                VariantDotsIndicator(
+                    current: current,
+                    total: total,
                     accent: accent,
-                    size: 28,
-                    ringWidth: 1
+                    onSelect: onSelectVariant
                 )
-                bubble
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                Spacer(minLength: Theme.Spacing.s6)
-                bubble
-                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
         .padding(.horizontal, Theme.Spacing.s3)
@@ -43,6 +57,11 @@ struct MessageBubbleView: View {
                 } label: {
                     Label("Regenerate", systemImage: "arrow.clockwise")
                 }
+            }
+            Button {
+                onFork()
+            } label: {
+                Label("Fork from here", systemImage: "arrow.triangle.branch")
             }
             Button(role: .destructive) {
                 onDelete()
