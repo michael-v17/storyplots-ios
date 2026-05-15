@@ -16,10 +16,7 @@ struct MainTabView: View {
             .tag(Tab.home)
 
             NavigationStack {
-                PeoplePlaceholder()
-                    .navigationTitle("People")
-                    .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
-                    .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+                PeopleView(client: auth.client)
             }
             .tabItem { Label("People", systemImage: "person.2.fill") }
             .tag(Tab.people)
