@@ -90,28 +90,27 @@ struct PeopleView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: Theme.Spacing.s3) {
-            Image(systemName: "person.2")
-                .font(.system(size: 48))
-                .foregroundStyle(Theme.Color.fg3)
-            Text("No characters yet")
-                .font(Theme.FontStyle.h3)
-                .foregroundStyle(Theme.Color.fg)
-            Text("Phase 6 ships the create / import / generate flows.")
-                .font(Theme.FontStyle.meta)
-                .foregroundStyle(Theme.Color.fg3)
-                .multilineTextAlignment(.center)
+        EmptyStateView(
+            systemImage: "person.crop.circle.badge.plus",
+            title: "No characters yet",
+            message: "Craft a persona, write a scenario, and start the story.",
+            actionTitle: "Create character"
+        ) {
+            showCreateSheet = true
         }
-        .padding(.vertical, Theme.Spacing.s10)
-        .frame(maxWidth: .infinity)
     }
 
     private var loadingState: some View {
-        VStack(spacing: Theme.Spacing.s3) {
-            ProgressView().tint(Theme.Color.brand1)
-            Text("Loading…").font(Theme.FontStyle.meta).foregroundStyle(Theme.Color.fg3)
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: Theme.Spacing.s3) {
+                ForEach(0..<6, id: \.self) { _ in
+                    CharacterSkeletonCard()
+                }
+            }
+            .padding(.horizontal, Theme.Spacing.s4)
+            .padding(.top, Theme.Spacing.s2)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .disabled(true)
     }
 
     private func errorState(_ message: String) -> some View {

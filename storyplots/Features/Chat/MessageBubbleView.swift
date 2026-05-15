@@ -69,33 +69,39 @@ struct MessageBubbleView: View {
         .padding(.horizontal, Theme.Spacing.s3)
         .contextMenu {
             Button {
+                Haptics.notify(.success)
                 onCopy()
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
             }
             if item.role == .assistant {
                 Button {
+                    Haptics.impact(.medium)
                     onRegenerate()
                 } label: {
                     Label("Regenerate", systemImage: "arrow.clockwise")
                 }
                 Button {
+                    Haptics.impact(.medium)
                     onRequestImage()
                 } label: {
                     Label("Generate image", systemImage: "photo.badge.plus")
                 }
                 Button {
+                    Haptics.impact(.light)
                     onToggleAudio()
                 } label: {
                     Label("Read aloud", systemImage: "speaker.wave.2.fill")
                 }
             }
             Button {
+                Haptics.impact(.light)
                 onFork()
             } label: {
                 Label("Fork from here", systemImage: "arrow.triangle.branch")
             }
             Button(role: .destructive) {
+                Haptics.notify(.warning)
                 onDelete()
             } label: {
                 Label("Delete", systemImage: "trash")
@@ -143,7 +149,10 @@ struct MessageBubbleView: View {
     }
 
     private func actionChip(systemImage: String, label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            Haptics.impact(.light)
+            action()
+        } label: {
             HStack(spacing: Theme.Spacing.s1) {
                 Image(systemName: systemImage)
                     .imageScale(.small)

@@ -9,14 +9,23 @@ struct ComposerView: View {
     let onSend: () -> Void
     let onCancel: () -> Void
 
+    @FocusState private var isFocused: Bool
+    @State private var sendPulse: Bool = false
+
     var body: some View {
         HStack(alignment: .bottom, spacing: Theme.Spacing.s2) {
             TextField("Message", text: $draft, axis: .vertical)
                 .lineLimit(1...5)
+                .focused($isFocused)
                 .padding(.horizontal, Theme.Spacing.s3)
                 .padding(.vertical, Theme.Spacing.s2)
                 .background(Theme.Color.bg3, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.card)
+                        .stroke(isFocused ? accent.opacity(0.55) : Color.clear, lineWidth: 1)
+                )
                 .foregroundStyle(Theme.Color.fg)
+                .animation(Theme.Motion.snappy, value: isFocused)
 
             sendButton
         }
@@ -28,7 +37,10 @@ struct ComposerView: View {
     @ViewBuilder
     private var sendButton: some View {
         if isStreaming {
-            Button(action: onCancel) {
+            Button {
+                Haptics.impact(.heavy)
+                onCancel()
+            } label: {
                 Image(systemName: "stop.fill")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Theme.Color.fgOnBrand)
@@ -36,7 +48,11 @@ struct ComposerView: View {
                     .background(Theme.Color.destructive, in: Circle())
             }
         } else {
-            Button(action: onSend) {
+            Button {
+                Haptics.impact(.medium)
+                withAnimation(Theme.Motion.pop) { sendPulse.toggle() }
+                onSend()
+            } label: {
                 Image(systemName: "arrow.up")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Theme.Color.fgOnBrand)
@@ -47,6 +63,8 @@ struct ComposerView: View {
                             : AnyShapeStyle(Theme.Color.brandGradient),
                         in: Circle()
                     )
+                    .scaleEffect(sendPulse ? 0.85 : 1.0)
+                    .animation(Theme.Motion.pop, value: sendPulse)
             }
             .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
         }

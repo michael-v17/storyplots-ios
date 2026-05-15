@@ -12,6 +12,7 @@ struct VariantDotsIndicator: View {
         HStack(spacing: Theme.Spacing.s1) {
             ForEach(0..<total, id: \.self) { idx in
                 Button {
+                    Haptics.selection()
                     onSelect(idx)
                 } label: {
                     Circle()

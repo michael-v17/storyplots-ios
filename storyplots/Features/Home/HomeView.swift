@@ -89,30 +89,24 @@ struct HomeView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: Theme.Spacing.s3) {
-            Image(systemName: "bubble.left.and.bubble.right")
-                .font(.system(size: 48))
-                .foregroundStyle(Theme.Color.fg3)
-            Text("No conversations yet")
-                .font(Theme.FontStyle.h3)
-                .foregroundStyle(Theme.Color.fg)
-            Text("Pick a character on the People tab to start chatting.")
-                .font(Theme.FontStyle.meta)
-                .foregroundStyle(Theme.Color.fg3)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.s10)
+        EmptyStateView(
+            systemImage: "bubble.left.and.bubble.right.fill",
+            title: "No conversations yet",
+            message: "Open the People tab to pick a character and start your first chat."
+        )
     }
 
     private var loadingState: some View {
-        VStack(spacing: Theme.Spacing.s3) {
-            ProgressView().tint(Theme.Color.brand1)
-            Text("Loading…")
-                .font(Theme.FontStyle.meta)
-                .foregroundStyle(Theme.Color.fg3)
+        ScrollView {
+            LazyVStack(spacing: Theme.Spacing.s3) {
+                ForEach(0..<5, id: \.self) { _ in
+                    ConversationSkeletonRow()
+                }
+            }
+            .padding(.horizontal, Theme.Spacing.s4)
+            .padding(.top, Theme.Spacing.s2)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .disabled(true)
     }
 
     private func errorState(_ message: String) -> some View {

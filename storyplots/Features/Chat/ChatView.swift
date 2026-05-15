@@ -122,9 +122,15 @@ struct ChatView: View {
     private var messagesScroll: some View {
         switch model.loadState {
         case .idle, .loading where model.items.isEmpty:
-            ProgressView()
-                .tint(model.accent)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: Theme.Spacing.s3) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        ChatBubbleSkeleton()
+                    }
+                }
+                .padding(.vertical, Theme.Spacing.s3)
+            }
+            .disabled(true)
         case .error(let m) where model.items.isEmpty:
             VStack(spacing: Theme.Spacing.s3) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -186,15 +192,10 @@ struct ChatView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: Theme.Spacing.s2) {
-            Text("No messages yet.")
-                .font(Theme.FontStyle.h3)
-                .foregroundStyle(Theme.Color.fg)
-            Text("Phase 5 wires the composer to /chat streaming.")
-                .font(Theme.FontStyle.meta)
-                .foregroundStyle(Theme.Color.fg3)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, Theme.Spacing.s10)
+        EmptyStateView(
+            systemImage: "bubble.left.and.text.bubble.right.fill",
+            title: "Say hello to \(model.characterName)",
+            message: "Set the scene, ask a question, or jump right into roleplay. Tap the composer to begin."
+        )
     }
 }
