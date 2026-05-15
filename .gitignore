@@ -1,0 +1,109 @@
+# ---- macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# ---- Xcode ----
+build/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ---- Swift Package Manager ----
+.build/
+.swiftpm/
+Package.resolved
+.netrc
+
+# ---- Provisioning / signing ----
+*.mobileprovision
+*.p12
+*.cer
+*.certSigningRequest
+
+# ---- Fastlane ----
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# ---- iOS Simulator / IDB ----
+.idb/
+
+# ---- Node / pnpm (base/frontend) ----
+node_modules/
+dist/
+.pnpm-store/
+*.tsbuildinfo
+.eslintcache
+.parcel-cache/
+
+# ---- Python (base/backend) ----
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.coverage
+.mypy_cache/
+.ruff_cache/
+
+# ---- Env / secrets ----
+.env
+.env.*
+!.env.example
+*.local
+secrets/
+.aws/
+.ssh/
+
+# ---- Playwright (en base/) ----
+.playwright-mcp/
+playwright-report/
+test-results/
+playwright/.auth/
+
+# ---- Claude Code local overrides ----
+.claude/settings.local.json
+.claude/PRPs/reports/
+
+# ---- Serena ----
+.serena/cache/
+.serena/project.local.yml
+
+# ---- ECC upstream source (164M; tenemos lo necesario en .claude/) ----
+everything-claude-code/
+
+# ---- Editors / IDE ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- Misc ----
+tmp/
+.cache/
