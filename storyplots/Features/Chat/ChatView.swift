@@ -23,12 +23,34 @@ struct ChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             messagesScroll
+            if let notice = model.transientNotice {
+                Text(notice)
+                    .font(Theme.FontStyle.meta)
+                    .foregroundStyle(Theme.Color.warning)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Theme.Spacing.s4)
+                    .padding(.vertical, Theme.Spacing.s2)
+                    .background(Theme.Color.warningSoft)
+            }
+            if case .error(let m) = model.streamState {
+                Text(m)
+                    .font(Theme.FontStyle.meta)
+                    .foregroundStyle(Theme.Color.destructive)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Theme.Spacing.s4)
+                    .padding(.vertical, Theme.Spacing.s2)
+                    .background(Theme.Color.destructiveSoft)
+            }
             ComposerView(
                 draft: $draft,
                 accent: model.accent,
-                isStreaming: false,
-                onSend: { /* Phase 5 wires /chat */ },
-                onCancel: { /* Phase 5 */ }
+                isStreaming: model.isStreaming,
+                onSend: {
+                    let toSend = draft
+                    draft = ""
+                    model.send(toSend)
+                },
+                onCancel: { model.cancelStream() }
             )
         }
         .background(Theme.Color.bg)

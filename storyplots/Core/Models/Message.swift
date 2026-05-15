@@ -26,12 +26,13 @@ struct MessageVariant: Decodable, Identifiable, Sendable, Equatable {
 }
 
 /// Display-ready item combining a `Message` with the active variant's content
-/// (or the user's text). What `ChatView` actually renders.
+/// (or the user's text). What `ChatView` actually renders. Also constructable
+/// directly for streaming placeholders the backend hasn't persisted yet.
 struct MessageItem: Identifiable, Sendable, Equatable {
-    let id: String
-    let role: MessageRole
-    let body: String
-    let createdAt: String
+    var id: String
+    var role: MessageRole
+    var body: String
+    var createdAt: String
 
     init(message: Message, activeVariant: MessageVariant?) {
         self.id = message.id
