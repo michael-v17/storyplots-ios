@@ -646,3 +646,117 @@ EXPECT: App launches into sidebar (drawer accessible via hamburger).
   - Liquid Glass gates aplicables incluidas? ✅ (Task 12 captures Default + Increase Contrast)
   - Subtasks atómicas con Verify ejecutable? ✅ (each task has ACTION/IMPLEMENT/VALIDATE)
   - Non-negotiables creator-vision §6 respetadas? ✅ (no web views, Theme tokens only, Swift Concurrency, backend untouched, §6.11 paridad estructural is the WHOLE POINT)
+
+---
+
+# Update 2 — PersonaLLM consensus (look & feel only)
+
+## Design philosophy clarification (creator-confirmed)
+
+**StoryPlots is the look. PersonaLLM is the iOS feel.**
+
+- **Colors / typography / brand**: 100% StoryPlots. Amber→orange brand gradient (`Theme.Color.brand1/brand2`), near-black bg (`Theme.Color.bg`), warm neutral fg palette, SF Pro system font, 16-swatch char-accent palette. **Zero PersonaLLM purple/teal.**
+- **Logo**: the `Wordmark` PNG (storyplots-ios `Assets.xcassets/Wordmark.imageset/`) stays the brand mark everywhere it appears. Permanently visible in the sidebar header (Task 3) **AND** in the Home content area now (see Update 2.A below).
+- **Structural patterns from PersonaLLM are adopted** because they make the app feel native (drawer + hamburger, scenario cards, vertical floating rail, layout cycler, conversation list per character, italic/quoted dual rendering, named resolution presets, "+ N/M" variant pill). Each adoption uses **StoryPlots tokens** and **StoryPlots wordmark/colors** — they are *layout* and *interaction* patterns, never visual identity.
+- **Bottom modal sheets for actions** stay where iOS native context menus aren't enough (PersonaLLM uses sheets exclusively; we use a mix per iOS-native expectation — `.contextMenu` long-press first, sheet when there are >5 options or destructive flows).
+
+## Update 2.A — Logo visible in Home (not only sidebar)
+
+Tarea adicional incorporada a **Task 5 (Home rebuild)**: el header de Home muestra el `Wordmark` centered debajo del status bar, sobre el `BrandTopWash` gradient. La frase de greeting ("Good morning, Roberth") queda DEBAJO del wordmark, no en su lugar. Esto resuelve el feedback "no veo logo por ningún lado" — el wordmark vive en Home permanentemente, en sidebar (cuando se abre), en SignIn y en About.
+
+## Update 2.B — New tasks added (4)
+
+### Task 4a — CharacterLandingView with scenario cards
+
+- **Source pattern**: PersonaLLM pre-chat character landing — large accent-ringed avatar + name + tagline + mode pill + N scenario cards. Tap scenario → creates conversation with that scenario's body as the first assistant message.
+- **ACTION**: Insert a landing screen between "tap character" and "push ChatView".
+- **IMPLEMENT**:
+  - Backend already has `characters.scenario` (text). For MVP, treat each character as having a single scenario; render one `ScenarioCard`. Future cycle can add multi-scenario support if we extend the data model.
+  - `CharacterLandingView`: avatar 120pt + accent glow ring; name `Theme.FontStyle.h2`; tagline meta; mode pill (`📖 Roleplay` themed in accent) using StoryPlots accent (`character.accentColor`).
+  - `ScenarioCard`: rounded card with `RoundedRectangle(cornerRadius: Theme.Radius.card)`, border `character.accent.opacity(0.45)` lineWidth 1, top-left "Scenario 1" pill in `character.accent`, top-right scenario title badge, body shows scenario text (3-line ellipsized), chevron trailing.
+  - If `characters.scenario.isEmpty` → skip landing, push directly to ChatView (existing behavior).
+  - Wire: Characters grid `NavigationLink` destination changes from `CharacterDetailView` to `CharacterLandingView`. CharacterDetailView remains reachable via long-press → "Edit character".
+- **MIRROR**: AVATAR_VIEW, THEME_TOKEN_USAGE, MATCHED_TRANSITION
+- **GOTCHA**: matched geometry id "card-{id}" was on CharacterCardView → CharacterDetailView. Move it to CharacterCardView → CharacterLandingView so the zoom transition lands on the new screen.
+- **VALIDATE**: Tapping Maya from Characters opens landing with scenario card; tap scenario opens a fresh conversation seeded with that scenario.
+
+### Task 5a — Home layout cycler (3 modes)
+
+- **Source pattern**: PersonaLLM home header has a layout-toggle icon cycling **grid cards / compact circles / list**.
+- **ACTION**: Add a cycle button to Home (visible only when user has 3+ characters) that toggles `HomeLayoutMode`.
+- **IMPLEMENT**:
+  - `enum HomeLayoutMode: String { case grid, circles, list }`
+  - `@SceneStorage("home.layoutMode") private var layoutMode: HomeLayoutMode = .grid`
+  - 3 rendering branches in Home:
+    - `grid` — 2-col `LazyVGrid` of `CharacterCardView` (existing pattern, used in Characters too — share component).
+    - `circles` — 4-col `LazyVGrid` of `AvatarView(size: 64)` + name below; ultra-dense.
+    - `list` — vertical list of horizontal rows: avatar 48pt + name + tagline preview ellipsized + chevron.
+  - Cycle button icon adapts to current mode: `square.grid.2x2.fill` / `circle.grid.3x3.fill` / `list.bullet`.
+  - Use StoryPlots accent for the active icon tint.
+- **MIRROR**: SHIMMER_SKELETON for loading, THEME_TOKEN_USAGE
+- **GOTCHA**: Don't use `@AppStorage` (cross-tab leakage if iPad multi-window); `@SceneStorage` is scoped right.
+- **VALIDATE**: Each tap cycles mode; selection persists across cold launch.
+
+### Task 5b — Searchable Home
+
+- **ACTION**: Add `.searchable()` to Home so the user can filter their Recent Characters strip + the layout grid below.
+- **IMPLEMENT**: Bind to `HomeViewModel.searchText`. Filter applies to `name`, `tagline`, and `scenario` substring match.
+- **MIRROR**: existing pattern in `PeopleView` `.searchable(text: ...)`.
+- **GOTCHA**: When in `.circles` mode, search-result count under 4 — show inline count "1 result for ‘Maya'".
+- **VALIDATE**: Type "maya" → only Maya remains visible.
+
+### Task 8a — Floating action rail (vertical, replaces inline chips below bubble)
+
+- **Source pattern**: PersonaLLM floating rail of circular chips pinned to the right edge of the *selected* message — `↻ Regenerate`, `⑂ Branch`, `🖼 Generate Image`, `🔊 TTS`. Themed in character accent.
+- **ACTION**: Refactor `MessageBubbleView` — the current inline `assistantActionRow` (`Image` + `Read aloud` chips below bubble) becomes a `MessageRail` overlay that appears only on the **selected** message, positioned to the right of the bubble.
+- **IMPLEMENT**:
+  - Selection: tap the bubble → it becomes "selected" (`@State var selectedMessageID: String?` in ChatView). Tap empty area → deselect.
+  - `MessageRail`: VStack of 4 circular chips (36pt) themed `accent.opacity(0.20)` fill + `accent` icon + `accent` border. Stack offset trailing.
+  - Chips: Regenerate / Fork / Generate Image / Read Aloud. The chip changes icon for active state (TTS pause).
+  - Long-press still opens `.contextMenu` (Copy / Edit & trim / Delete / Fork). Long-press is "more options"; rail is "primary actions".
+  - When `images` is non-empty, rail also surfaces a "Save image" chip (mirrors PersonaLLM behavior with multi-chip rails on image-attached messages).
+- **MIRROR**: HAPTICS, THEME_TOKEN_USAGE
+- **GOTCHA**: The rail floats; ensure it doesn't overlap the bubble text when bubble is wide. Reserve `.padding(.trailing, 48)` on bubble when selected.
+- **VALIDATE**: Tap Maya's message → rail appears trailing, themed teal (Maya's accent). Tap empty area → rail dismisses.
+
+## Update 2.C — Refinements baked into existing tasks
+
+| Existing task | Refinement | Why |
+|---|---|---|
+| Task 3 (SidebarView) | Wordmark stays `Image("Wordmark")` (StoryPlots logo), section labels switch to small-caps + tracking: `Text("RECENT").font(.caption.weight(.semibold)).tracking(1.5).textCase(.uppercase).foregroundStyle(Theme.Color.fg3)` | PersonaLLM section-label rhythm — looks more app-native than headline-cased. Pure typography upgrade, no color change. |
+| Task 5 (Home rebuild) | Add **Wordmark image centered above greeting** in Home. First child of Home VStack, sits on the BrandTopWash. | Resolves "logo no se ve en Home". |
+| Task 5 (Home rebuild) | "+ New Persona" as first dashed-bordered tile in the grid (and "+ Create New Persona" full-width row in list mode) instead of relying on the `+` button hidden in the People/Characters header | PersonaLLM onboarding pattern; more discoverable. |
+| Task 6 (Gallery) | Tile masonry mixing 2- and 3-col when both portraits and landscapes coexist. Empty state: brand-gradient `photo.stack.fill` + "No images yet". | StoryPlots styling on PersonaLLM layout. |
+| Task 7 (Grammar dashboard) | Accuracy gauge uses **amber→orange brand gradient** for the active arc (not purple). | Brand consistency. |
+| Task 8 (MessageBubbleView render) | Distinguish `*italic*` (narration) vs `"quoted"` (dialogue plain) explicitly in the markdown rendering. Italics render in `.italic()`, quoted text plain. | PersonaLLM convention — improves readability of roleplay text. |
+| Task 8 (Variants indicator) | Add a compact `< 1/2 >` pill (`Capsule().fill(Theme.Color.bg3)`) at the top-left of assistant bubble when variants > 1, complementing the existing dots indicator. Tap arrows to swap. | Scales better than dots for >3 variants. |
+| Task 8a (MessageRail) | Image-generation "Painting…" copy updates to **"Generating… feel free to keep chatting"** to communicate non-blocking. | PersonaLLM messaging. |
+| Existing GenerationOverridePanelView | Refactor as **named-preset modal sheet**: "Random · Surprise me", "Square 1408×1408", "Portrait 1280×1664", "Landscape 1664×1280", "Tall Portrait 1088×1920", "Wide Landscape 1920×1088", "Ultra Tall", "Ultra Wide". Each row tappable, the selected row highlights in brand-amber tint. | PersonaLLM resolution sheet UX — cleaner than the picker dropdown. |
+| Task 12 (smoke) | Verify wordmark renders in: SignIn, Home content (new), Sidebar header (new), About. | Section parity. |
+
+## Updated estimate
+
+- Original Tasks 1–12: 3h–3h 45min
+- New tasks 4a, 5a, 5b, 8a: +90min (~60 + 45 + 10 + 30 — slightly compress 4a if scenario data is single-string)
+- Refinements baked in: included in original task times
+
+**Total**: 4h 30m – 5h end-to-end.
+
+## What stays unchanged (StoryPlots identity)
+
+- `Theme.Color.*` palette intact: `brand1` `#F5B547`, `brand2` `#FF7B3D`, `bg` `#0F0F10`, etc.
+- `Theme.Color.brandGradient` (amber→orange) drives every primary CTA.
+- 16 char-accent palette (violet, indigo, blue, sky, teal, green, lime, amber, bronze, orange, red, pink, rose, fuchsia, slate, stone) — uses the StoryPlots palette, NOT PersonaLLM's. Confirmed in `Theme.swift`.
+- `Wordmark` and `Mark` PNG assets stay (StoryPlots branding).
+- App icon stays (amber→orange gradient + book + sparkle, generated in Fase 11 polish round).
+- Material usage stays per `design.md` §6.5 (nav bar `.regularMaterial`, chips `.thinMaterial`, viewer `.ultraThickMaterial`, etc.).
+- SF Pro system fonts via `Theme.FontStyle.*` — no font family change.
+
+## Self-review against the consensus
+
+- StoryPlots colors preserved everywhere? ✅ (verified each refinement above uses `Theme.Color.*` and `character.accent` only).
+- Logo visible in Home? ✅ (Update 2.A — new content-area wordmark above greeting).
+- Logo visible permanent? ✅ (sidebar header + Home content + SignIn + About).
+- All web sections present? ✅ (Tasks 6, 7, 8, 9, 10 add Gallery, Grammar dashboard, Character Import, Visual Roleplay, Prompt Editor, Memory user-settings).
+- App-native feel from PersonaLLM? ✅ (drawer pattern, scenario landing, floating rail, layout cycler, dual rendering convention, named-preset modal — all adopted as patterns, none of their colors).
+- Backwards compatibility with the seed `ux.md` §2 rewrite from commit `4ba72df`? ✅ — Update 2 is an additive refinement, not a contradiction.
