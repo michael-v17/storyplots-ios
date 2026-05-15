@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Supabase
 
 struct ChatView: View {
@@ -103,7 +104,10 @@ struct ChatView: View {
                                 item: item,
                                 accent: model.accent,
                                 characterName: model.characterName,
-                                avatarURL: model.avatarURL
+                                avatarURL: model.avatarURL,
+                                onCopy: { UIPasteboard.general.string = item.body },
+                                onRegenerate: { model.regenerate(messageID: item.id) },
+                                onDelete: { model.deleteMessage(item.id) }
                             )
                             .id(item.id)
                         }

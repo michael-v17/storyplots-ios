@@ -8,6 +8,9 @@ struct MessageBubbleView: View {
     let accent: Color
     let characterName: String
     let avatarURL: URL?
+    let onCopy: () -> Void
+    let onRegenerate: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.s2) {
@@ -28,6 +31,25 @@ struct MessageBubbleView: View {
             }
         }
         .padding(.horizontal, Theme.Spacing.s3)
+        .contextMenu {
+            Button {
+                onCopy()
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
+            }
+            if item.role == .assistant {
+                Button {
+                    onRegenerate()
+                } label: {
+                    Label("Regenerate", systemImage: "arrow.clockwise")
+                }
+            }
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 
     private var bubble: some View {
