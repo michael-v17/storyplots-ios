@@ -3,9 +3,12 @@ import Supabase
 
 struct PeopleView: View {
     @State private var model: PeopleViewModel
+    @State private var showCreateSheet: Bool = false
+    private let client: SupabaseClient
 
     init(client: SupabaseClient) {
         _model = State(initialValue: PeopleViewModel(client: client))
+        self.client = client
     }
 
     private let columns = [
@@ -37,6 +40,21 @@ struct PeopleView: View {
         ), prompt: "Search characters")
         .refreshable { await model.load() }
         .task { if model.loadState == .idle { await model.load() } }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showCreateSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .foregroundStyle(Theme.Color.brand1)
+                }
+            }
+        }
+        .sheet(isPresented: $showCreateSheet) {
+            CharacterCreateSheet(client: client) { _ in
+                Task { await model.load() }
+            }
+        }
     }
 
     private var gridState: some View {
@@ -50,7 +68,9 @@ struct PeopleView: View {
                             CharacterDetailView(
                                 character: character,
                                 accent: model.accent(for: character),
-                                avatarURL: model.avatarURL(for: character)
+                                avatarURL: model.avatarURL(for: character),
+                                client: client,
+                                onChanged: { Task { await model.load() } }
                             )
                         } label: {
                             CharacterCardView(

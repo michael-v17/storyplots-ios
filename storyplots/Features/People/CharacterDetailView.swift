@@ -1,11 +1,14 @@
 import SwiftUI
+import Supabase
 
 /// Read-only landing for a character (per `seed/open-questions.md` Q5.3 default).
-/// The "Edit" toolbar item is wired but pushes a Phase-6 placeholder.
+/// The "Edit" toolbar item pushes a real `CharacterEditView` in Phase 6.
 struct CharacterDetailView: View {
     let character: Character
     let accent: Color
     let avatarURL: URL?
+    let client: SupabaseClient
+    let onChanged: () -> Void
 
     var body: some View {
         ScrollView {
@@ -32,10 +35,16 @@ struct CharacterDetailView: View {
         .toolbarBackgroundVisibility(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Edit") {
-                    // Phase 6 wires CharacterEditView.
+                NavigationLink {
+                    CharacterEditView(
+                        client: client,
+                        character: character,
+                        onSaved: onChanged,
+                        onDeleted: onChanged
+                    )
+                } label: {
+                    Text("Edit").foregroundStyle(Theme.Color.brand1)
                 }
-                .foregroundStyle(Theme.Color.brand1)
             }
         }
     }
