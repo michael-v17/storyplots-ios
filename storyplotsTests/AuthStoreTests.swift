@@ -1,34 +1,59 @@
 import Testing
 @testable import storyplots
 
+@MainActor
 struct AuthStoreTests {
 
-    @Test("Phase 0 AuthStore.signInEmail throws .notImplemented")
-    func signInEmailStub() async {
-        let store = AuthStore()
-        do {
-            try await store.signInEmail("a@b.com", password: "x")
-            Issue.record("Expected AuthError.notImplemented to be thrown")
-        } catch let error as AuthError {
-            #expect(error == .notImplemented)
-        } catch {
-            Issue.record("Unexpected error type: \(error)")
-        }
+    private func makeStore() -> AuthStore {
+        // SupabaseManager falls back to an unreachable client when the test bundle
+        // doesn't carry the Info.plist keys, which is fine — these tests verify
+        // state mutations that short-circuit before any network call.
+        AuthStore(client: SupabaseManager.shared.client)
     }
 
-    @Test("AuthState starts signed-out with no error")
-    @MainActor
-    func authStateInitial() {
-        let state = AuthState()
-        #expect(state.isSignedIn == false)
-        #expect(state.lastError == nil)
+    @Test("AuthStore starts signed-out with no error and no email")
+    func initialState() {
+        let store = makeStore()
+        #expect(store.isSignedIn == false)
+        #expect(store.userEmail == nil)
+        #expect(store.lastError == nil)
+        #expect(store.isLoading == false)
     }
 
-    @Test("AuthState.setSignedIn flips the flag")
-    @MainActor
-    func authStateFlip() {
-        let state = AuthState()
-        state.setSignedIn(true)
-        #expect(state.isSignedIn == true)
+    @Test("signInEmail with empty email surfaces missingCredentials and does not flip isSignedIn")
+    func emptyEmailMissingCredentials() async {
+        let store = makeStore()
+        await store.signInEmail("", password: "anything")
+        #expect(store.lastError == .missingCredentials)
+        #expect(store.isSignedIn == false)
+    }
+
+    @Test("signInEmail with empty password surfaces missingCredentials")
+    func emptyPasswordMissingCredentials() async {
+        let store = makeStore()
+        await store.signInEmail("user@example.com", password: "")
+        #expect(store.lastError == .missingCredentials)
+        #expect(store.isSignedIn == false)
+    }
+
+    @Test("signUp with empty fields surfaces missingCredentials")
+    func signUpMissingCredentials() async {
+        let store = makeStore()
+        await store.signUp(email: "", password: "")
+        #expect(store.lastError == .missingCredentials)
+    }
+
+    @Test("resetPassword with empty email surfaces missingCredentials")
+    func resetPasswordMissingCredentials() async {
+        let store = makeStore()
+        await store.resetPassword(email: "")
+        #expect(store.lastError == .missingCredentials)
+    }
+
+    @Test("AuthError.userFacingMessage maps every case")
+    func authErrorMessages() {
+        #expect(AuthError.missingCredentials.userFacingMessage == "Enter your email and password.")
+        #expect(AuthError.signInFailed("bad creds").userFacingMessage == "bad creds")
+        #expect(AuthError.notImplemented.userFacingMessage == "Not implemented yet.")
     }
 }

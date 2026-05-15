@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5C5C0001AABBCCDDEEFF0003 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 5C5C0001AABBCCDDEEFF0002 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		E41F976C2FB6BB39007CE954 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5C5C0001AABBCCDDEEFF0003 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = storyplots;
 			packageProductDependencies = (
+				5C5C0001AABBCCDDEEFF0002 /* Supabase */,
 			);
 			productName = storyplots;
 			productReference = E41F975E2FB6BB34007CE954 /* storyplots.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = E41F97552FB6BB34007CE954;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5C5C0001AABBCCDDEEFF0001 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E41F975F2FB6BB34007CE954 /* Products */;
 			projectDirPath = "";
@@ -395,11 +404,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = storyplots/storyplots.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7RYJM44SBW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_SupabaseAnonKey = "sb_publishable_PfR-7qHZ568ySKYdOujSsQ_Z1YOFLWC";
+				INFOPLIST_KEY_SupabaseURL = "https://mhdekknjaigoeuzrriey.supabase.co";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -426,11 +438,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = storyplots/storyplots.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7RYJM44SBW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_SupabaseAnonKey = "sb_publishable_PfR-7qHZ568ySKYdOujSsQ_Z1YOFLWC";
+				INFOPLIST_KEY_SupabaseURL = "https://mhdekknjaigoeuzrriey.supabase.co";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -576,6 +591,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5C5C0001AABBCCDDEEFF0001 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5C5C0001AABBCCDDEEFF0002 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5C5C0001AABBCCDDEEFF0001 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E41F97562FB6BB34007CE954 /* Project object */;
 }

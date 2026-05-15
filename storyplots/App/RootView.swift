@@ -1,10 +1,24 @@
 import SwiftUI
 
-/// Top-level view of the app. Phase 0 routes to `ScaffoldView`; Phase 1 switches between
-/// `AuthFlow` and `MainTabView` based on `AuthState.isSignedIn`.
+/// Top-level view. Switches between the auth flow (signed-out) and the
+/// `MainTabView` (signed-in). Restores the existing Supabase session on
+/// cold launch so a returning user lands directly in the tab shell.
 struct RootView: View {
+    @State private var auth: AuthStore = AuthStore(client: SupabaseManager.shared.client)
+
     var body: some View {
-        ScaffoldView()
+        Group {
+            if auth.isSignedIn {
+                MainTabView()
+            } else {
+                SignInView()
+            }
+        }
+        .environment(auth)
+        .animation(Theme.Motion.snappy, value: auth.isSignedIn)
+        .task {
+            await auth.restoreSession()
+        }
     }
 }
 
