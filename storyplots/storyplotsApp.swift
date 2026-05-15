@@ -1,17 +1,13 @@
-//
-//  storyplotsApp.swift
-//  storyplots
-//
-//  Created by Michael V on 14/5/26.
-//
-
 import SwiftUI
 
+/// Scene root. Forces dark mode per `seed/creator-vision.md` §8.1 + open-questions Q2.2.
+/// Light mode is deferred to a post-MVP phase.
 @main
 struct storyplotsApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .preferredColorScheme(.dark)
         }
     }
 }
