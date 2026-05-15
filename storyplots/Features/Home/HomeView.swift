@@ -23,10 +23,8 @@ struct HomeView: View {
             }
         }
         .background(Theme.Color.bg)
-        .navigationTitle("Home")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
-        .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
         .refreshable {
             await model.load()
         }
@@ -40,51 +38,60 @@ struct HomeView: View {
 
     private var listState: some View {
         ScrollView {
-            LazyVStack(spacing: Theme.Spacing.s3) {
-                YourPersonaPill(persona: model.persona) { showPersonaSheet = true }
+            VStack(spacing: 0) {
+                HomeHeaderView(
+                    personaName: model.persona?.name,
+                    conversationCount: model.conversations.count,
+                    onAvatarTap: { showPersonaSheet = true }
+                )
 
-                if model.conversations.isEmpty {
-                    emptyState
-                } else {
-                    ForEach(model.conversations) { conv in
-                        NavigationLink {
-                            ChatView(
-                                conversationID: conv.id,
-                                character: conv.character_id.flatMap { model.charactersByID[$0] },
-                                accent: model.accent(for: conv),
-                                avatarRef: model.avatarRef(for: conv),
-                                client: model.client
-                            )
-                        } label: {
-                            ConversationCardView(
-                                conversation: conv,
-                                accent: model.accent(for: conv),
-                                avatarRef: model.avatarRef(for: conv)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                Task { await model.delete(conv) }
+                LazyVStack(spacing: Theme.Spacing.s3) {
+                    YourPersonaPill(persona: model.persona) { showPersonaSheet = true }
+
+                    if model.conversations.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(model.conversations) { conv in
+                            NavigationLink {
+                                ChatView(
+                                    conversationID: conv.id,
+                                    character: conv.character_id.flatMap { model.charactersByID[$0] },
+                                    accent: model.accent(for: conv),
+                                    avatarRef: model.avatarRef(for: conv),
+                                    client: model.client
+                                )
                             } label: {
-                                Label("Delete chat", systemImage: "trash")
+                                ConversationCardView(
+                                    conversation: conv,
+                                    accent: model.accent(for: conv),
+                                    avatarRef: model.avatarRef(for: conv)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    Haptics.notify(.warning)
+                                    Task { await model.delete(conv) }
+                                } label: {
+                                    Label("Delete chat", systemImage: "trash")
+                                }
                             }
                         }
                     }
-                }
 
-                if case .error(let m) = model.loadState {
-                    Text(m)
-                        .font(Theme.FontStyle.meta)
-                        .foregroundStyle(Theme.Color.destructive)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(Theme.Spacing.s3)
-                        .background(Theme.Color.destructiveSoft, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                    if case .error(let m) = model.loadState {
+                        Text(m)
+                            .font(Theme.FontStyle.meta)
+                            .foregroundStyle(Theme.Color.destructive)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(Theme.Spacing.s3)
+                            .background(Theme.Color.destructiveSoft, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                    }
                 }
+                .padding(.horizontal, Theme.Spacing.s4)
+                .padding(.top, Theme.Spacing.s2)
+                .padding(.bottom, Theme.Spacing.s6)
             }
-            .padding(.horizontal, Theme.Spacing.s4)
-            .padding(.top, Theme.Spacing.s2)
-            .padding(.bottom, Theme.Spacing.s6)
         }
     }
 
@@ -98,13 +105,20 @@ struct HomeView: View {
 
     private var loadingState: some View {
         ScrollView {
-            LazyVStack(spacing: Theme.Spacing.s3) {
-                ForEach(0..<5, id: \.self) { _ in
-                    ConversationSkeletonRow()
+            VStack(spacing: 0) {
+                HomeHeaderView(
+                    personaName: nil,
+                    conversationCount: 0,
+                    onAvatarTap: { showPersonaSheet = true }
+                )
+                LazyVStack(spacing: Theme.Spacing.s3) {
+                    ForEach(0..<5, id: \.self) { _ in
+                        ConversationSkeletonRow()
+                    }
                 }
+                .padding(.horizontal, Theme.Spacing.s4)
+                .padding(.top, Theme.Spacing.s2)
             }
-            .padding(.horizontal, Theme.Spacing.s4)
-            .padding(.top, Theme.Spacing.s2)
         }
         .disabled(true)
     }

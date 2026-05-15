@@ -4,6 +4,7 @@ import Supabase
 struct PeopleView: View {
     @State private var model: PeopleViewModel
     @State private var showCreateSheet: Bool = false
+    @State private var filter: PeopleFilter = .all
     private let client: SupabaseClient
 
     init(client: SupabaseClient) {
@@ -30,26 +31,14 @@ struct PeopleView: View {
             }
         }
         .background(Theme.Color.bg)
-        .navigationTitle("People")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
-        .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
         .searchable(text: Binding(
             get: { model.searchText },
             set: { model.searchText = $0 }
         ), prompt: "Search characters")
         .refreshable { await model.load() }
         .task { if model.loadState == .idle { await model.load() } }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showCreateSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .foregroundStyle(Theme.Color.brand1)
-                }
-            }
-        }
         .sheet(isPresented: $showCreateSheet) {
             CharacterCreateSheet(client: client) { _ in
                 Task { await model.load() }
@@ -59,32 +48,39 @@ struct PeopleView: View {
 
     private var gridState: some View {
         ScrollView {
-            if model.filtered.isEmpty {
-                emptyState
-            } else {
-                LazyVGrid(columns: columns, spacing: Theme.Spacing.s3) {
-                    ForEach(model.filtered) { character in
-                        NavigationLink {
-                            CharacterDetailView(
-                                character: character,
-                                accent: model.accent(for: character),
-                                avatarRef: model.avatarRef(for: character),
-                                client: client,
-                                onChanged: { Task { await model.load() } }
-                            )
-                        } label: {
-                            CharacterCardView(
-                                character: character,
-                                accent: model.accent(for: character),
-                                avatarRef: model.avatarRef(for: character)
-                            )
+            VStack(spacing: 0) {
+                PeopleHeaderView(
+                    characterCount: model.characters.count,
+                    filter: $filter,
+                    onCreate: { showCreateSheet = true }
+                )
+                if model.filtered.isEmpty {
+                    emptyState
+                } else {
+                    LazyVGrid(columns: columns, spacing: Theme.Spacing.s3) {
+                        ForEach(model.filtered) { character in
+                            NavigationLink {
+                                CharacterDetailView(
+                                    character: character,
+                                    accent: model.accent(for: character),
+                                    avatarRef: model.avatarRef(for: character),
+                                    client: client,
+                                    onChanged: { Task { await model.load() } }
+                                )
+                            } label: {
+                                CharacterCardView(
+                                    character: character,
+                                    accent: model.accent(for: character),
+                                    avatarRef: model.avatarRef(for: character)
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
+                    .padding(.horizontal, Theme.Spacing.s4)
+                    .padding(.top, Theme.Spacing.s2)
+                    .padding(.bottom, Theme.Spacing.s6)
                 }
-                .padding(.horizontal, Theme.Spacing.s4)
-                .padding(.top, Theme.Spacing.s2)
-                .padding(.bottom, Theme.Spacing.s6)
             }
         }
     }
@@ -102,13 +98,20 @@ struct PeopleView: View {
 
     private var loadingState: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: Theme.Spacing.s3) {
-                ForEach(0..<6, id: \.self) { _ in
-                    CharacterSkeletonCard()
+            VStack(spacing: 0) {
+                PeopleHeaderView(
+                    characterCount: 0,
+                    filter: $filter,
+                    onCreate: { showCreateSheet = true }
+                )
+                LazyVGrid(columns: columns, spacing: Theme.Spacing.s3) {
+                    ForEach(0..<6, id: \.self) { _ in
+                        CharacterSkeletonCard()
+                    }
                 }
+                .padding(.horizontal, Theme.Spacing.s4)
+                .padding(.top, Theme.Spacing.s2)
             }
-            .padding(.horizontal, Theme.Spacing.s4)
-            .padding(.top, Theme.Spacing.s2)
         }
         .disabled(true)
     }
