@@ -929,6 +929,117 @@ Push notifications operativos. Universal Links. Capabilities Xcode completas. Ap
 
 ---
 
+## Fase 11 — IA Realignment + Missing Surfaces
+
+### Goal
+
+Reemplazar la IA TabView (Home/People/Settings) — que escondió Gallery, Grammar
+dashboard, Character Import, Visual Roleplay, Prompt Editor y Memory user-
+settings bajo Settings sin terminar de construirlos — por
+`NavigationSplitView` con sidebar/drawer que espeja la web. Construir todas
+las surfaces faltantes. Honra el non-negotiable §6.11 de creator-vision
+("paridad estructural con web") y la nueva IA en ux.md §2.
+
+### Inputs requeridos
+
+- `seed/ux.md` §2 (post-ARCH-001) — sidebar + drawer + 3 destinations + grouped recent chats + footer
+- `seed/creator-vision.md` §6.11 — paridad estructural no negociable
+- `base/frontend/src/routes/Gallery.tsx`, `Grammar.tsx`, `CharacterImport.tsx`, `VisualRoleplaySettings.tsx`, `PromptEditor.tsx`, `MemorySettings.tsx` — referencias web a portar
+- `base/frontend/src/features/shell/Sidebar.tsx`, `RecentChats.tsx`, `YourPersonaCard.tsx` — patrón sidebar
+
+### Subtasks
+
+1. **AppShell con NavigationSplitView**
+   - Crear `AppShellView` (reemplaza `MainTabView`). `NavigationSplitView(sidebar:detail:)` con preferred column visibility automatic.
+   - En iPhone se colapsa a single-column con botón hamburguesa (sistema lo da gratis).
+   - `MainTabView` deja de ser referenciado; eliminar después de smoke test.
+   - **Verify**: build green, app abre con sidebar visible (iPad) o drawer accessible (iPhone).
+
+2. **SidebarView con wordmark + 3 destinations**
+   - `SidebarView` con header wordmark grande (`Image("Wordmark")` 48pt tall).
+   - 3 NavigationLinks: Home / Characters / Gallery. SF Symbols: `house.fill` / `person.crop.rectangle.stack.fill` / `photo.stack.fill`.
+   - `@SceneStorage` para preservar destination seleccionado.
+   - **Verify**: tap cada destination, contenido cambia en detail column.
+
+3. **Recent Chats agrupados por character**
+   - `SidebarRecentChats` carga conversations, agrupa por `character_id`, ordena por `max(last_message_at)` por grupo descending.
+   - Cada row colapsado: avatar character + nombre + count chats. Tap → push a `CharacterChatsView`.
+   - `CharacterChatsView` lista chats del character; tap → push a `ChatView` real.
+   - **Verify**: con seed data (24 conversations), agrupado en 8 characters, sin repetición.
+
+4. **Sidebar footer: Persona + Settings + Sign out**
+   - `YourPersonaCard` (avatar + nombre persona) tap → `ProfileView` push.
+   - `Settings` NavigationLink → `SettingsView` hub.
+   - `Sign out` con confirmation dialog → `auth.signOut()`.
+
+5. **Home rebuild**
+   - Reemplazar lista de chats por: `RecentCharactersStrip` (5 cards horizontal scroll) + `GrammarWidget` + `HomeNudge` cuando empty.
+   - Mantener wordmark+header brand wash (de Fase 11 polish).
+   - **Verify**: visible que Home muestra characters, no chats; widget Grammar tap navega a dashboard.
+
+6. **Gallery — surface nueva**
+   - `GalleryView`: LazyVGrid 2-col de `generated_images` ordered by created_at desc. Signed URLs via `SupabaseStorageHelper`.
+   - Tap → `ImageViewer` fullscreen con matched geometry.
+   - Long-press → confirm delete via `DELETE /images/{id}`.
+   - Empty state editorial.
+
+7. **Grammar dashboard — surface nueva**
+   - `GrammarDashboardView`: accuracy gauge (`grammar_aggregates`), recent corrections list (`grammar_corrections` últimas 20), top error categories. "Run insights now" button → `POST /insights/run`.
+   - Distinto de `GrammarSettingsView` (config). Distinto del panel de chat (scoped a conversation).
+
+8. **Character Import — surface nueva**
+   - `CharacterImportSheet`: `PhotosPicker` → PNG seleccionado → leer tEXt chunk con `CGImageSource` properties → parse Character Card v1/v2/v3 (objeto `raw_card`).
+   - `POST /character-refine` con `raw_card` + format detectado → `CharacterRefineResult`.
+   - Review sheet (mismo flow que CharacterGenerate) → save via `CharacterEditViewModel`.
+   - Wire en `+` Menu de Characters como tercera opción.
+
+9. **Settings sub-screens missing**
+   - `VisualRoleplaySettingsView`: toggle enabled, auto-mode, POV picker, custom_instructions. Persist a `users.preferences.visual_roleplay`.
+   - `PromptEditorView`: TextEditor grande con system prompt template + variable hints `{{char}}`, `{{user}}`, `{{persona}}`. Persist a `users.system_prompt_template` o `preferences.prompt_template`.
+   - `MemorySettingsView`: user-facing toggles separado de `MemoryEngineSettingsView` (que retiene config provider/model). Split: enabled, retention, extraction_frequency van a MemorySettings; provider_config_id + embedding_model van a MemoryEngine.
+
+10. **Update SettingsView con nuevos rows**
+    - Engines: Text / Image / Memory Engine / Voice (unchanged).
+    - Writing: Roleplay / Visual Roleplay / Writing Styles / Grammar (settings) / Prompt Editor / Memory (settings).
+    - App: Profile / Privacy & Data / About (Gallery deja de ser alias aquí — vive como destination top-level).
+
+11. **Eliminar TabView code path**
+    - Remover `MainTabView` después de smoke test.
+    - Update `storyplotsApp` para entrypoint en `AppShellView`.
+    - Tests + RenderPreview snapshots actualizados.
+
+### Verificación de la fase
+
+- BuildProject: green sin warnings.
+- RunAllTests: ≥ tests pre-Fase-11 (no regression).
+- ios-simulator-mcp smoke test:
+  - Sidebar abre con swipe-from-edge o hamburger button.
+  - Wordmark visible en sidebar header.
+  - 3 destinations + chats agrupados render.
+  - Tap chat row → Character chats list → individual chat.
+  - Gallery muestra imágenes generadas.
+  - Grammar widget en Home tap → dashboard.
+  - Character Import flow corre end-to-end con una PNG card de prueba.
+  - Settings → cada nueva sub-screen abre.
+- RenderPreview snapshots para `AppShellView`, `SidebarView`, `GalleryView`, `GrammarDashboardView`, `CharacterImportSheet`, los 3 new settings views — default + Reduce Transparency ON.
+
+### Riesgos
+
+- NavigationSplitView en iPhone con drawer auto-collapse es estable en iOS 26 pero el comportamiento puede sentirse distinto al de Apple Mail. Plan B: si la UX se siente off, custom drawer con `.gesture(DragGesture)`.
+- PNG tEXt chunk parsing es non-trivial; algunos Character Card v2/v3 vienen base64-encoded en distintos keys. Plan B: si no parsea, mostrar error claro "Card format unsupported" y dejar al user usar Generate o Manual.
+- Recent Chats agrupado por character puede sentirse "too few rows" si el user tiene 1 chat por character. Métrica: ≥5 grupos = OK; <5 = mostrar también flat list debajo.
+
+### Deuda producida
+
+- Snapshot test harness (`swift-snapshot-testing` SPM dep) sigue pending — se hace formalmente al cierre de Fase 11.
+- LaunchScreen storyboard con wordmark — pending de Fase 11 polish round, sigue pending.
+
+### Estado
+
+- **Pending** (a generar el plan con `/prp-plan` al cerrar la edición del seed).
+
+---
+
 ## Fases post-TestFlight (referencia, no parte de este roadmap)
 
 Cuando llegue el momento, estas son las próximas fases lógicas:

@@ -19,28 +19,88 @@
 
 ## 2. Information architecture
 
-Bottom tab bar con **3 tabs**. Decidido frente a single-stack o 2-tabs porque ofrece discoverabilidad clara para los usuarios nuevos y separación lógica de las superficies principales.
+> **Updated 2026-05-15 per ARCH-001 in open-questions.md §1.x.** The previous
+> 3-tab decision was reverted by the creator after the live audit revealed
+> section-parity gaps with the web. The new design uses `NavigationSplitView`
+> so the wordmark is permanently visible and the sidebar mirrors the web's
+> shell while staying iOS-native.
+
+`NavigationSplitView` con **sidebar** (iPad) / **drawer** (iPhone). En iPhone
+se abre via swipe-from-edge o el botón hamburguesa en el `topBarLeading`.
+Mismo patrón nativo que Apple Mail, Files, Reminders, Photos en iPad.
 
 ```
-┌──────────────────────────────────────┐
-│                                      │
-│         (contenido del tab)          │
-│                                      │
-│                                      │
-├─────────┬──────────┬─────────────────┤
-│  Home   │  People  │    Settings     │
-└─────────┴──────────┴─────────────────┘
+┌─────────────┬────────────────────┐
+│  StoryPlots │                    │
+│  ─────────  │                    │
+│  🏠 Home    │                    │
+│  👥 Charact.│     (detail)       │
+│  🖼  Gallery│                    │
+│  ─────────  │                    │
+│  RECENT     │                    │
+│  [M] Maya·3 │                    │
+│  [T] Tomás·2│                    │
+│  [H] Hisak·4│                    │
+│  …          │                    │
+│  ─────────  │                    │
+│  ◯ Persona  │                    │
+│  ⚙ Settings │                    │
+│  ↩ Sign out │                    │
+└─────────────┴────────────────────┘
 ```
 
-| Tab | Icon (SF Symbol) | Contenido |
+### 2.1 Sidebar destinations (3 + footer)
+
+| Destination | Icon (SF Symbol) | Contenido |
 |---|---|---|
-| **Home** | `bubble.left.and.bubble.right.fill` | Lista de chats recientes, "tu persona" pill, quick-start a un character. Entry point principal a las conversaciones. |
-| **People** | `person.2.fill` | Grid de characters. Crear, editar, importar, generar. |
-| **Settings** | `gearshape.fill` | Todas las settings + Profile + Insights + Gallery agrupados. |
+| **Home** | `house.fill` | Recent **Characters** preview (5 horizontal scroll) + Grammar widget (master toggle + accuracy snapshot, tap → `GrammarDashboardView`) + HomeNudge cuando `characters.isEmpty`. **NO** chats — los chats viven en la sidebar Recent. |
+| **Characters** | `person.crop.rectangle.stack.fill` | Grid completo de characters. Crear (Manual / Generate-with-AI / Import-from-PNG-card), editar, eliminar. |
+| **Gallery** | `photo.stack.fill` | Grid de todas las `generated_images` del user. Tap → ImageViewer (matched geometry). Long-press → delete via backend `/images/{id}`. |
 
-**Por qué no más tabs:** 4+ tabs requieren explicar el modelo mental. 3 son recordables al primer uso. Insights, Gallery, Profile, Grammar dashboard caben bajo Settings sin sentirse perdidos (igual que en iOS Settings real).
+### 2.2 Sidebar Recent Chats — agrupados por character
 
-**Por qué "People" y no "Characters":** menos jerga de producto, más lenguaje natural. **[REVIEW]** — el creator puede preferir "Characters" para consistency con el web.
+Entre las destinations y el footer aparece **Recent**: lista de chats agrupada
+por `character_id`, ordenada por el `last_message_at` más reciente de cada
+grupo. Cada row colapsada muestra el avatar del character + nombre + count
+de chats (`Maya Okonkwo · 3 chats`). Tap row → push a `CharacterChatsView`
+listando los chats de ese character; tap chat → push a `ChatView` real.
+
+Repetir 4 veces "Dra. Hisako Nakamura — New Conversation" (estado de Fase 2)
+es anti-patrón. La sidebar agrupa.
+
+### 2.3 Sidebar footer — persona + settings + sign out
+
+| Item | Notas |
+|---|---|
+| **YourPersonaCard** | Avatar + nombre persona. Tap → `ProfileView`. Match al footer de la sidebar web. |
+| **Settings** | NavigationLink al hub. Contiene todas las sub-screens (engines, writing, app). |
+| **Sign out** | Destructive button. Confirmation dialog antes del signOut. |
+
+### 2.4 Wordmark permanente
+
+En el header de la sidebar / drawer va el wordmark grande (PNG asset
+`Wordmark`). Se ve desde cualquier pantalla cuando el drawer está abierto.
+Resuelve el feedback de Fase 11 "no veo el logo por ningún lado".
+
+### 2.5 Sub-routes (push dentro de la stack del destination activo)
+
+| Donde push | Surface | Origin |
+|---|---|---|
+| Home → tap character preview | `CharacterDetailView` | Recent Characters card |
+| Home → tap Grammar widget | `GrammarDashboardView` (read-only stats) | Widget tap |
+| Characters → tap card | `CharacterDetailView` → `CharacterEditView` | Grid |
+| Characters → + Menu → Import | `CharacterImportSheet` (PHPicker + PNG tEXt parser + `/character-refine`) | Plus menu |
+| Sidebar → tap RecentChats row | `CharacterChatsView` (lista de chats de ese char) → `ChatView` | Sidebar group |
+| Gallery → tap image | `ImageViewer` fullscreen | Grid |
+| Settings → engine row | `TextEngine / ImageEngine / MemoryEngine / Voice` | Form |
+| Settings → writing row | `Roleplay / VisualRoleplay / WritingStyles / Grammar(settings) / PromptEditor / MemorySettings` | Form |
+| Settings → app row | `Profile / PrivacyAndData / About` | Form |
+
+### 2.6 Anti-patterns de IA
+
+- ❌ **Bottom tab bar** con `TabView`. El primer intento (Fase 0–10) lo usó; revertido en Fase 11 porque escondió Gallery/Insights/Grammar dashboard bajo Settings y nunca terminaron de construirse.
+- ❌ **Home como lista de chats**. Los chats van en la sidebar (recent grouped). Home es preview de characters + glanceable widgets.
+- ❌ **Repetir mismo character en lista flat**. Agrupar por character.
 
 ---
 

@@ -116,11 +116,12 @@ Reglas que ningún ciclo puede violar. Si una de estas se rompe, se revierte el 
 3. **SwiftUI primero, UIKit donde haya que.** No se mezclan por gusto. UIKit interop solo cuando SwiftUI realmente no tiene equivalente (e.g. `UITextView` con attributed text muy complejo, custom transitions específicas).
 4. **Concurrencia moderna.** Swift Concurrency (`async`/`await`, `Task`, actors) por defecto. No Combine, no callbacks, no GCD manual salvo casos puntuales.
 5. **El backend no se daña.** Cualquier endpoint nuevo va aislado bajo `/api/v2/ios/...` (o equivalente). Las rutas existentes siguen sirviendo al web sin tocarse.
-6. **Native feel sobre paridad literal.** Si una elección "fiel al web" se siente mal en iOS, gana la versión iOS. Documentar la divergencia en `ux.md` con justificación.
+6. **Native-feel sobre paridad literal a nivel de _interaction_.** Sheets en vez de modales, push en vez de routing-by-URL, swipe-back, long-press context menus, materials nativos — esos son iOS-native. **NO aplica a structural omission** (ver §6.11). Si una decisión de interaction "fiel al web" se siente mal en iOS, gana la versión iOS. Documentar la divergencia en `ux.md`.
 7. **Accessibility por defecto.** Dynamic Type, VoiceOver labels, contrast ratios respetados. Nunca un control que solo funcione por ojo.
 8. **Testing como gate por feature, no como afterthought.** Cada feature ships con tests (XCTest unit + snapshot via Xcode MCP `RenderPreview`). Sin tests no se considera done.
 9. **Sin librerías de UI de terceros.** SwiftUI puro + UIKit interop solo lo nativo. No SnapKit, no Lottie por gusto, no UI kits comerciales. **[REVIEW]** — confirmar si la regla admite excepción para casos específicos (e.g. Markdown rendering).
 10. **Sin trackers ni analytics opacos al usuario.** Si se agrega analytics, va declarado, opt-in donde la regulación lo exija.
+11. **Paridad estructural de secciones con web — no negociable.** Toda surface que existe en el web (`/gallery`, `/grammar`, `/character/new/import`, `/settings/visual-roleplay`, `/settings/prompt-editor`, `/settings/memory`, etc.) **existe también en iOS**. La navegación puede ser distinta (sidebar/drawer en vez de sidebar fija + routes-by-URL), pero NUNCA se omite una surface "agrupándola bajo otro hub" sin construirla. Esta regla fue introducida en ARCH-001 (open-questions.md §1.x) después de descubrir que Fase 0–10 dejó Gallery, Grammar dashboard, Character Import, Visual Roleplay, Prompt Editor y Memory user-settings sin construir bajo la promesa "viven bajo Settings".
 
 ---
 

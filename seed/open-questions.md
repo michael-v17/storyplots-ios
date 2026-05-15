@@ -349,3 +349,16 @@ Entries here record decisions the autonomous run took with a documented default 
 | Phase | Status | Plan | Report | Last commit (filled at commit time) |
 |---|---|---|---|---|
 | 0 — Bootstrap Xcode | ✅ Completed 2026-05-15 by autonomous run | `0001-phase-0-bootstrap-xcode.plan.md` | `0001-phase-0-bootstrap-xcode.report.md` | (pending; filled by commit step) |
+
+### ARCH-001 — IA realignment to web parity (creator-authorized seed override)
+
+- **Source**: After phases 0–11 shipped, the creator reviewed the running app and flagged that the iOS information architecture had diverged from the web reference far more than intended. Specifically: (a) the seed's `ux.md` §2 decided "Home = chats recientes" and 3 tabs, abandoning the web sidebar; (b) Gallery / Grammar dashboard / Visual Roleplay settings / Prompt Editor / Memory user-settings / Character Import were grouped "under Settings" but in practice were never built; (c) the wordmark was only visible in SignIn, not in any permanent chrome.
+- **Decision (creator, 2026-05-15)**: Realign the iOS IA so every web surface is present. Replace `TabView` with `NavigationSplitView` (drawer on iPhone, sidebar on iPad) carrying the wordmark permanently + the four destinations Home / Characters / Gallery / Settings + a grouped Recent Chats list + the Persona card + Sign out. Recent Chats group by `character_id`. Home rebuilds as a Recent Characters preview + Grammar widget + HomeNudge — chats live in the sidebar, not on Home.
+- **Why this overrides the seed's `ux.md` §2**: The seed's "3 tabs is more iOS native" argument was opinionated and weakly grounded — Apple Mail / Photos / Files all use `NavigationSplitView` with sidebars on iPad and drawers on iPhone. The seed traded structural section parity for native-feel framing; the creator wants both. Native-feel rules from `creator-vision.md` §6.6 still apply (sheets, push, swipe, long-press), but the structural skeleton mirrors the web.
+- **What the seed has to update** (creator-authorized — supersedes AUTONOMY §4 "no seed edits"):
+  - `ux.md` §2 — replace with the NavigationSplitView design + sidebar destination list + grouped chats spec.
+  - `creator-vision.md` §6 — add a non-negotiable: "Section parity with web is non-negotiable. Surfaces that exist on web exist on iOS, even if reached through different navigation."
+  - `roadmap.md` — add **Fase 11 — IA Realignment + Missing Surfaces** with exit criteria.
+- **When the creator confirms**: implicitly by reviewing this entry + the resulting commits.
+- **Origin**: Creator audit conversation, 2026-05-15.
+
