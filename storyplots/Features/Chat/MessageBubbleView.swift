@@ -26,6 +26,7 @@ struct MessageBubbleView: View {
     let onRequestImage: () -> Void
     let onSelectImage: (GeneratedImage) -> Void
     let onToggleAudio: () -> Void
+    let onEdit: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -93,6 +94,12 @@ struct MessageBubbleView: View {
                 } label: {
                     Label("Read aloud", systemImage: "speaker.wave.2.fill")
                 }
+            }
+            Button {
+                Haptics.impact(.light)
+                onEdit()
+            } label: {
+                Label("Edit & trim", systemImage: "pencil.and.scribble")
             }
             Button {
                 Haptics.impact(.light)

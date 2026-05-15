@@ -11,6 +11,7 @@ struct ChatView: View {
     @State private var forkAnchorID: String?
     @State private var forkedConversationID: String?
     @State private var presentedImage: GeneratedImage?
+    @State private var editingMessageID: String?
     @Namespace private var imageNamespace
     private let client: SupabaseClient
 
@@ -81,6 +82,16 @@ struct ChatView: View {
                 ChatPanelsMenuButton(presented: $activePanel)
             }
         }
+        .sheet(item: Binding(
+            get: { editingMessageID.map { EditAnchor(id: $0) } },
+            set: { editingMessageID = $0?.id }
+        )) { anchor in
+            if let item = model.items.first(where: { $0.id == anchor.id }) {
+                EditTrimSheet(originalText: item.body) { newText in
+                    model.editAndTrim(messageID: anchor.id, newText: newText)
+                }
+            }
+        }
         .sheet(item: $activePanel) { panel in
             ChatPanelSheet(
                 panel: panel,
@@ -123,6 +134,7 @@ struct ChatView: View {
     }
 
     private struct ForkAnchor: Identifiable, Equatable { let id: String }
+    private struct EditAnchor: Identifiable, Equatable { let id: String }
 
     @ViewBuilder
     private var messagesScroll: some View {
@@ -176,7 +188,8 @@ struct ChatView: View {
                                 onSelectImage: { img in
                                     withAnimation(Theme.Motion.smooth) { presentedImage = img }
                                 },
-                                onToggleAudio: { model.toggleAudio(messageID: item.id) }
+                                onToggleAudio: { model.toggleAudio(messageID: item.id) },
+                                onEdit: { editingMessageID = item.id }
                             )
                             .id(item.id)
                         }
