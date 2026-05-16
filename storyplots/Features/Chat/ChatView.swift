@@ -32,30 +32,41 @@ struct ChatView: View {
     }
 
     var body: some View {
+        mainStack
+            .background(Theme.Color.bg)
+            .accentTopWash(color: model.accent, height: 280, intensity: 0.22)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .tabBar)
+            .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+            .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+            .toolbar { toolbarContent }
+            .modifier(ChatSheetsModifier(
+                showCharacterDetail: $showCharacterDetail,
+                editingMessageID: $editingMessageID,
+                activePanel: $activePanel,
+                forkAnchorID: $forkAnchorID,
+                forkedConversationID: $forkedConversationID,
+                generationOverrides: $generationOverrides,
+                presentedImage: $presentedImage,
+                imageNamespace: imageNamespace,
+                client: client,
+                model: model
+            ))
+            .task { if model.loadState == .idle { await model.load() } }
+            .onDisappear { model.stopAllAudio() }
+    }
+
+    private var mainStack: some View {
         VStack(spacing: 0) {
             messagesScroll
-            if let notice = model.transientNotice {
-                Text(notice)
-                    .font(Theme.FontStyle.meta)
-                    .foregroundStyle(Theme.Color.warning)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, Theme.Spacing.s4)
-                    .padding(.vertical, Theme.Spacing.s2)
-                    .background(Theme.Color.warningSoft)
-            }
-            if case .error(let m) = model.streamState {
-                Text(m)
-                    .font(Theme.FontStyle.meta)
-                    .foregroundStyle(Theme.Color.destructive)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, Theme.Spacing.s4)
-                    .padding(.vertical, Theme.Spacing.s2)
-                    .background(Theme.Color.destructiveSoft)
-            }
+            noticeStrip
+            errorStrip
             ComposerView(
                 draft: $draft,
                 accent: model.accent,
                 isStreaming: model.isStreaming,
+                placeholderName: model.characterName,
                 onSend: {
                     let toSend = draft
                     draft = ""
@@ -64,100 +75,6 @@ struct ChatView: View {
                 onCancel: { model.cancelStream() }
             )
         }
-        .background(Theme.Color.bg)
-        .accentTopWash(color: model.accent, intensity: 0.18)
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
-        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
-        .toolbarBackgroundVisibility(.visible, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                ChatHeaderTitle(
-                    avatarRef: model.avatarRef,
-                    characterName: model.characterName,
-                    tagline: model.character?.tagline,
-                    isStreaming: model.isStreaming,
-                    accent: model.accent
-                ) {
-                    Haptics.impact(.light)
-                    showCharacterDetail = true
-                }
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                ChatPanelsMenuButton(presented: $activePanel)
-            }
-        }
-        .sheet(isPresented: $showCharacterDetail) {
-            if let character = model.character {
-                CharacterDetailSheet(
-                    character: character,
-                    accent: model.accent,
-                    avatarRef: model.avatarRef,
-                    client: client,
-                    onClose: { showCharacterDetail = false }
-                )
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-            }
-        }
-        .sheet(item: Binding(
-            get: { editingMessageID.map { EditAnchor(id: $0) } },
-            set: { editingMessageID = $0?.id }
-        )) { anchor in
-            if let item = model.items.first(where: { $0.id == anchor.id }) {
-                EditTrimSheet(originalText: item.body) { newText in
-                    model.editAndTrim(messageID: anchor.id, newText: newText)
-                }
-            }
-        }
-        .sheet(item: $activePanel) { panel in
-            ChatPanelSheet(
-                panel: panel,
-                conversationID: model.conversationID,
-                client: client,
-                generationOverrides: $generationOverrides
-            )
-        }
-        .sheet(item: Binding(
-            get: { forkAnchorID.map { ForkAnchor(id: $0) } },
-            set: { forkAnchorID = $0?.id }
-        )) { anchor in
-            ForkDialog(
-                conversationID: model.conversationID,
-                anchorMessageID: anchor.id,
-                client: client
-            ) { newID in
-                forkedConversationID = newID
-            }
-        }
-        .alert("Forked", isPresented: Binding(
-            get: { forkedConversationID != nil },
-            set: { if !$0 { forkedConversationID = nil } }
-        )) {
-            Button("OK") { forkedConversationID = nil }
-        } message: {
-            Text("New branch created. Go back to Home to open it.")
-        }
-        .task { if model.loadState == .idle { await model.load() } }
-        .overlay(alignment: .center) {
-            if let img = presentedImage {
-                ImageViewer(
-                    image: img,
-                    namespace: imageNamespace,
-                    onDismiss: { withAnimation(Theme.Motion.smooth) { presentedImage = nil } },
-                    onRegenerate: {
-                        if let messageID = img.message_id {
-                            model.requestImage(messageID: messageID, overrides: generationOverrides)
-                        }
-                    },
-                    onDelete: { model.deleteGeneratedImage(img) }
-                )
-                .transition(.opacity)
-                .zIndex(50)
-            }
-        }
-        .onDisappear { model.stopAllAudio() }
     }
 
     private struct ForkAnchor: Identifiable, Equatable { let id: String }
@@ -177,6 +94,53 @@ struct ChatView: View {
         case .idle:    return true
         case .loading: return model.items.isEmpty
         default:       return false
+        }
+    }
+
+
+    @ViewBuilder
+    private var noticeStrip: some View {
+        if let notice = model.transientNotice {
+            Text(notice)
+                .font(Theme.FontStyle.meta)
+                .foregroundStyle(Theme.Color.warning)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Theme.Spacing.s4)
+                .padding(.vertical, Theme.Spacing.s2)
+                .background(Theme.Color.warningSoft)
+        }
+    }
+
+    @ViewBuilder
+    private var errorStrip: some View {
+        if case .error(let m) = model.streamState {
+            Text(m)
+                .font(Theme.FontStyle.meta)
+                .foregroundStyle(Theme.Color.destructive)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Theme.Spacing.s4)
+                .padding(.vertical, Theme.Spacing.s2)
+                .background(Theme.Color.destructiveSoft)
+        }
+    }
+
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            ChatHeaderTitle(
+                avatarRef: model.avatarRef,
+                characterName: model.characterName,
+                tagline: model.character?.tagline,
+                isStreaming: model.isStreaming,
+                accent: model.accent
+            ) {
+                Haptics.impact(.light)
+                showCharacterDetail = true
+            }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            ChatPanelsMenuButton(presented: $activePanel)
         }
     }
 
@@ -262,5 +226,98 @@ struct ChatView: View {
             title: "Say hello to \(model.characterName)",
             message: "Set the scene, ask a question, or jump right into roleplay. Tap the composer to begin."
         )
+    }
+}
+
+
+/// All the sheet/overlay/alert presentations for ChatView. Bundled into a
+/// dedicated modifier so SwiftUI's type-checker can resolve the body in
+/// reasonable time (without this split the chained .sheet/.alert/.overlay
+/// stack hits the compiler's complexity ceiling).
+private struct ChatSheetsModifier: ViewModifier {
+    @Binding var showCharacterDetail: Bool
+    @Binding var editingMessageID: String?
+    @Binding var activePanel: ChatPanel?
+    @Binding var forkAnchorID: String?
+    @Binding var forkedConversationID: String?
+    @Binding var generationOverrides: GenerationOverrides
+    @Binding var presentedImage: GeneratedImage?
+    let imageNamespace: Namespace.ID
+    let client: SupabaseClient
+    let model: ChatViewModel
+
+    private struct ForkAnchor: Identifiable, Equatable { let id: String }
+    private struct EditAnchor: Identifiable, Equatable { let id: String }
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $showCharacterDetail) {
+                if let character = model.character {
+                    CharacterDetailSheet(
+                        character: character,
+                        accent: model.accent,
+                        avatarRef: model.avatarRef,
+                        client: client,
+                        onClose: { showCharacterDetail = false }
+                    )
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+            .sheet(item: Binding(
+                get: { editingMessageID.map { EditAnchor(id: $0) } },
+                set: { editingMessageID = $0?.id }
+            )) { anchor in
+                if let item = model.items.first(where: { $0.id == anchor.id }) {
+                    EditTrimSheet(originalText: item.body) { newText in
+                        model.editAndTrim(messageID: anchor.id, newText: newText)
+                    }
+                }
+            }
+            .sheet(item: $activePanel) { panel in
+                ChatPanelSheet(
+                    panel: panel,
+                    conversationID: model.conversationID,
+                    client: client,
+                    generationOverrides: $generationOverrides
+                )
+            }
+            .sheet(item: Binding(
+                get: { forkAnchorID.map { ForkAnchor(id: $0) } },
+                set: { forkAnchorID = $0?.id }
+            )) { anchor in
+                ForkDialog(
+                    conversationID: model.conversationID,
+                    anchorMessageID: anchor.id,
+                    client: client
+                ) { newID in
+                    forkedConversationID = newID
+                }
+            }
+            .alert("Forked", isPresented: Binding(
+                get: { forkedConversationID != nil },
+                set: { if !$0 { forkedConversationID = nil } }
+            )) {
+                Button("OK") { forkedConversationID = nil }
+            } message: {
+                Text("New branch created. Go back to Home to open it.")
+            }
+            .overlay(alignment: .center) {
+                if let img = presentedImage {
+                    ImageViewer(
+                        image: img,
+                        namespace: imageNamespace,
+                        onDismiss: { withAnimation(Theme.Motion.smooth) { presentedImage = nil } },
+                        onRegenerate: {
+                            if let messageID = img.message_id {
+                                model.requestImage(messageID: messageID, overrides: generationOverrides)
+                            }
+                        },
+                        onDelete: { model.deleteGeneratedImage(img) }
+                    )
+                    .transition(.opacity)
+                    .zIndex(50)
+                }
+            }
     }
 }

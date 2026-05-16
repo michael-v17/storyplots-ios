@@ -6,22 +6,45 @@ struct ComposerView: View {
     @Binding var draft: String
     let accent: Color
     let isStreaming: Bool
+    let placeholderName: String?
     let onSend: () -> Void
     let onCancel: () -> Void
 
     @FocusState private var isFocused: Bool
     @State private var sendPulse: Bool = false
 
+    init(draft: Binding<String>,
+         accent: Color,
+         isStreaming: Bool,
+         placeholderName: String? = nil,
+         onSend: @escaping () -> Void,
+         onCancel: @escaping () -> Void) {
+        self._draft = draft
+        self.accent = accent
+        self.isStreaming = isStreaming
+        self.placeholderName = placeholderName
+        self.onSend = onSend
+        self.onCancel = onCancel
+    }
+
+    private var placeholder: String {
+        guard let name = placeholderName?.split(separator: " ").first.map(String.init),
+              !name.isEmpty else {
+            return "Message"
+        }
+        return "Message \(name)…"
+    }
+
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.s2) {
-            TextField("Message", text: $draft, axis: .vertical)
+            TextField(placeholder, text: $draft, axis: .vertical)
                 .lineLimit(1...5)
                 .focused($isFocused)
-                .padding(.horizontal, Theme.Spacing.s3)
-                .padding(.vertical, Theme.Spacing.s2 + 2)
-                .background(Theme.Color.bg3, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                .padding(.horizontal, Theme.Spacing.s4)
+                .padding(.vertical, Theme.Spacing.s3)
+                .background(Theme.Color.bg3, in: Capsule())
                 .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.card)
+                    Capsule()
                         .strokeBorder(
                             isFocused ? accent.opacity(0.55) : accent.opacity(0.22),
                             lineWidth: isFocused ? 1.5 : 1
@@ -35,7 +58,6 @@ struct ComposerView: View {
         .padding(.horizontal, Theme.Spacing.s3)
         .padding(.vertical, Theme.Spacing.s2)
         .background(.thinMaterial)
-        // Thin hairline above the composer lifts it off the messages.
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(Theme.Color.borderSoft.opacity(0.45))
@@ -53,7 +75,7 @@ struct ComposerView: View {
                 Image(systemName: "stop.fill")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(Theme.Color.fgOnBrand)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 40, height: 40)
                     .background(Theme.Color.destructive, in: Circle())
             }
         } else {
@@ -65,7 +87,7 @@ struct ComposerView: View {
                 Image(systemName: "arrow.up")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(canSend ? Theme.Color.fgOnBrand : accent.opacity(0.55))
-                    .frame(width: 36, height: 36)
+                    .frame(width: 40, height: 40)
                     .background(
                         canSend
                             ? AnyShapeStyle(

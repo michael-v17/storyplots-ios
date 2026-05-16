@@ -39,7 +39,7 @@ struct MessageBubbleView: View {
                         size: 28,
                         ringWidth: 1
                     )
-                    VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
                         bubble
                         if !images.isEmpty || imageRequestLoading {
                             MessageImageRail(
@@ -50,9 +50,10 @@ struct MessageBubbleView: View {
                                 onSelect: onSelectImage
                             )
                         }
-                        assistantActionRow
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    assistantActionRail
+                        .padding(.top, 2)
                 } else {
                     Spacer(minLength: Theme.Spacing.s6)
                     bubble
@@ -117,25 +118,25 @@ struct MessageBubbleView: View {
         }
     }
 
-    /// Floating action chips below an assistant bubble — image + audio.
+    /// Vertical icon-only rail attached to the right edge of an assistant
+    /// message — matches PersonaLLM's per-message floating chips (see
+    /// base/Seed/PersonaLLM-Reference/04-screens/chat.md §C).
     @ViewBuilder
-    private var assistantActionRow: some View {
-        HStack(spacing: Theme.Spacing.s2) {
-            actionChip(
+    private var assistantActionRail: some View {
+        VStack(spacing: Theme.Spacing.s2) {
+            railChip(
                 systemImage: imageRequestLoading ? "hourglass" : "photo.badge.plus",
-                label: images.isEmpty ? "Image" : "Add image",
                 isActive: imageRequestLoading,
-                action: onRequestImage
+                action: onRequestImage,
+                accessibilityLabel: images.isEmpty ? "Generate image" : "Add image"
             )
-            actionChip(
+            railChip(
                 systemImage: audioChipSymbol,
-                label: audioChipLabel,
                 isActive: audioState == .playing,
-                action: onToggleAudio
+                action: onToggleAudio,
+                accessibilityLabel: audioAccessibilityLabel
             )
-            Spacer(minLength: 0)
         }
-        .padding(.top, Theme.Spacing.s2)
     }
 
     private var audioChipSymbol: String {
@@ -147,41 +148,38 @@ struct MessageBubbleView: View {
         }
     }
 
-    private var audioChipLabel: String {
+    private var audioAccessibilityLabel: String {
         switch audioState {
         case .idle, .error:    return "Read aloud"
-        case .loading:         return "Loading"
+        case .loading:         return "Loading audio"
         case .playing:         return "Pause"
         case .paused:          return "Play"
         }
     }
 
-    private func actionChip(systemImage: String, label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
+    private func railChip(
+        systemImage: String,
+        isActive: Bool,
+        action: @escaping () -> Void,
+        accessibilityLabel: String
+    ) -> some View {
         Button {
             Haptics.impact(.light)
             action()
         } label: {
-            HStack(spacing: Theme.Spacing.s1) {
-                Image(systemName: systemImage)
-                    .imageScale(.small)
-                    .foregroundStyle(isActive ? accent : accent.opacity(0.95))
-                Text(label)
-                    .font(Theme.FontStyle.timestamp.weight(.medium))
-                    .foregroundStyle(isActive ? accent : Theme.Color.fg1)
-            }
-            .padding(.horizontal, Theme.Spacing.s3)
-            .padding(.vertical, Theme.Spacing.s2)
-            .background(
-                ZStack {
-                    Capsule().fill(Theme.Material.chip)
-                    Capsule().fill(accent.opacity(isActive ? 0.18 : 0.08))
-                }
-            )
-            .overlay(
-                Capsule().stroke(accent.opacity(isActive ? 0.7 : 0.35), lineWidth: 1)
-            )
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(isActive ? Theme.Color.fgOnBrand : accent)
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle().fill(accent.opacity(isActive ? 0.85 : 0.12))
+                )
+                .overlay(
+                    Circle().stroke(accent.opacity(isActive ? 0 : 0.45), lineWidth: 1)
+                )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var bubble: some View {
@@ -189,13 +187,13 @@ struct MessageBubbleView: View {
         return VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
             renderedBody
                 .font(.body)
-                .foregroundStyle(Theme.Color.fg)
+                .foregroundStyle(isAssistant ? Theme.Color.fg : Theme.Color.fgOnBrand)
                 .frame(maxWidth: bubbleMaxWidth, alignment: .leading)
         }
         .padding(Theme.Spacing.s3)
         .background(
             RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .fill(isAssistant ? Theme.Color.bg2 : Theme.Color.bg3)
+                .fill(isAssistant ? AnyShapeStyle(Theme.Color.bg2) : AnyShapeStyle(accent))
         )
         .overlay(alignment: .topLeading) {
             if isAssistant, let (current, total) = variantPagination, total > 1 {
@@ -244,7 +242,6 @@ struct MessageBubbleView: View {
     }
 
     private var bubbleMaxWidth: CGFloat? {
-        // ~80% width — actual constraint comes from the parent HStack + Spacer.
         nil
     }
 
