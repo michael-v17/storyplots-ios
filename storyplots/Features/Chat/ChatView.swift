@@ -65,7 +65,7 @@ struct ChatView: View {
             )
         }
         .background(Theme.Color.bg)
-        .accentTopWash(color: model.accent, intensity: 0.10)
+        .accentTopWash(color: model.accent, intensity: 0.18)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)

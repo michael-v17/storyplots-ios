@@ -23,8 +23,8 @@ struct ComposerView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.card)
                         .strokeBorder(
-                            isFocused ? accent.opacity(0.55) : Theme.Color.borderSoft,
-                            lineWidth: 1
+                            isFocused ? accent.opacity(0.55) : accent.opacity(0.22),
+                            lineWidth: isFocused ? 1.5 : 1
                         )
                 )
                 .foregroundStyle(Theme.Color.fg)
@@ -35,9 +35,7 @@ struct ComposerView: View {
         .padding(.horizontal, Theme.Spacing.s3)
         .padding(.vertical, Theme.Spacing.s2)
         .background(.thinMaterial)
-        // Thin hairline above the composer lifts it off the messages — gives
-        // the bar a clear "this is a separate surface" boundary the same way
-        // iMessage does with its toolbar.
+        // Thin hairline above the composer lifts it off the messages.
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(Theme.Color.borderSoft.opacity(0.45))
@@ -66,7 +64,7 @@ struct ComposerView: View {
             } label: {
                 Image(systemName: "arrow.up")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(canSend ? Theme.Color.fgOnBrand : Theme.Color.fg3)
+                    .foregroundStyle(canSend ? Theme.Color.fgOnBrand : accent.opacity(0.55))
                     .frame(width: 36, height: 36)
                     .background(
                         canSend
@@ -80,6 +78,10 @@ struct ComposerView: View {
                             : AnyShapeStyle(Theme.Color.bg3),
                         in: Circle()
                     )
+                    .overlay(
+                        Circle().stroke(accent.opacity(canSend ? 0 : 0.4), lineWidth: 1)
+                    )
+                    .shadow(color: canSend ? accent.opacity(0.45) : .clear, radius: 6, y: 2)
                     .scaleEffect(sendPulse ? 0.85 : 1.0)
                     .animation(Theme.Motion.pop, value: sendPulse)
             }

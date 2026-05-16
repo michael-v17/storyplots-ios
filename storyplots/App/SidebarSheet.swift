@@ -96,12 +96,12 @@ struct SidebarSheet: View {
                             .foregroundStyle(Theme.Color.brand1)
                             .frame(width: 32, height: 32)
                             .background(
-                                Theme.Color.brand1.opacity(selection == dest ? 0.22 : 0.10),
+                                Theme.Color.brand1.opacity(selection == dest ? 0.16 : 0.10),
                                 in: RoundedRectangle(cornerRadius: 8)
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(selection == dest ? Theme.Color.brand1.opacity(0.55) : Color.clear, lineWidth: 1)
+                                    .stroke(selection == dest ? Theme.Color.brand1.opacity(0.30) : Color.clear, lineWidth: 1)
                             )
                         Text(dest.title)
                             .font(Theme.FontStyle.body.weight(.medium))
