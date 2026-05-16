@@ -213,15 +213,28 @@ private struct LorebookEntryEditor: View {
                     .eq("id", value: e.id)
                     .execute()
             } else {
+                let uid = try await client.auth.session.user.id.uuidString
                 struct Insert: Encodable {
                     let conversation_id: String
+                    let user_id: String
                     let title: String
                     let keywords: [String]
                     let body: String
+                    let source: String
+                    let token_estimate: Int
                 }
+                let payload = Insert(
+                    conversation_id: conversationID,
+                    user_id: uid,
+                    title: title,
+                    keywords: kws,
+                    body: bodyText,
+                    source: "manual",
+                    token_estimate: Self.estimateTokens(title: title, body: bodyText, keywords: kws)
+                )
                 try await client
                     .from("lorebook_entries")
-                    .insert(Insert(conversation_id: conversationID, title: title, keywords: kws, body: bodyText))
+                    .insert(payload)
                     .execute()
             }
             Haptics.notify(.success)
@@ -230,5 +243,13 @@ private struct LorebookEntryEditor: View {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    /// Cheap token estimate: ~4 chars per token, mirroring the bookkeeping the
+    /// backend uses for `knowledge_budget` slicing (schema.md §2.7). Keywords
+    /// are summed because each one becomes a retrieval input.
+    private static func estimateTokens(title: String, body: String, keywords: [String]) -> Int {
+        let total = title.count + body.count + keywords.reduce(0) { $0 + $1.count }
+        return max(1, total / 4)
     }
 }
