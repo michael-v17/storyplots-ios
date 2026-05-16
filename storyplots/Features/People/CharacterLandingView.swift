@@ -253,10 +253,15 @@ struct CharacterLandingView: View {
 
     private func createConversation(scenarioBody: String?) async throws -> String {
         // Conversations RLS requires user_id = auth.uid(). The backend also
-        // expects a character_snapshot per `base/frontend/src/lib/conversations.ts`
-        // — we materialize the prompt-relevant subset of the loaded character.
+        // expects a character_snapshot, writing_style_snapshot, and (optionally)
+        // a persona_id per `base/frontend/src/lib/conversations.ts:161-167`.
         let session = try await client.auth.session
         let userID = session.user.id.uuidString
+
+        // Best-effort: pick the user's primary persona so /chat can address them
+        // by the right name. Failure here is non-fatal — the conversation can
+        // still be created with persona_id = nil.
+        let personaID: String? = await Self.fetchPrimaryPersonaID(client: client)
 
         struct CharacterSnapshotPayload: Encodable {
             let name: String
@@ -264,11 +269,17 @@ struct CharacterLandingView: View {
             let mode: String?
             let scenario: String?
         }
+        // Empty-dict snapshot until we surface a writing-style picker on iOS;
+        // matches the web's `styleRow ? buildWritingStyleSnapshot(styleRow) : {}`
+        // fallback when the user has no active style.
+        struct EmptySnapshot: Encodable {}
         struct ConvInsert: Encodable {
             let user_id: String
             let character_id: String
             let title: String
             let character_snapshot: CharacterSnapshotPayload
+            let writing_style_snapshot: EmptySnapshot
+            let persona_id: String?
         }
 
         let snapshot = CharacterSnapshotPayload(
@@ -282,7 +293,9 @@ struct CharacterLandingView: View {
             user_id: userID,
             character_id: character.id,
             title: title,
-            character_snapshot: snapshot
+            character_snapshot: snapshot,
+            writing_style_snapshot: EmptySnapshot(),
+            persona_id: personaID
         )
 
         let inserted: [Conversation] = try await client
@@ -306,5 +319,21 @@ struct CharacterLandingView: View {
                 .execute()
         }
         return row.id
+    }
+
+    private static func fetchPrimaryPersonaID(client: SupabaseClient) async -> String? {
+        struct Row: Decodable { let id: String }
+        do {
+            let rows: [Row] = try await client
+                .from("user_personas")
+                .select("id")
+                .order("created_at", ascending: true)
+                .limit(1)
+                .execute()
+                .value
+            return rows.first?.id
+        } catch {
+            return nil
+        }
     }
 }
