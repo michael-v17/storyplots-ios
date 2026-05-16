@@ -36,6 +36,8 @@ struct SidebarSheet: View {
             }
             .background(Theme.Color.bg)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+            .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -91,11 +93,15 @@ struct SidebarSheet: View {
                 } label: {
                     HStack(spacing: Theme.Spacing.s3) {
                         Image(systemName: dest.systemImage)
-                            .foregroundStyle(selection == dest ? Theme.Color.fgOnBrand : Theme.Color.brand1)
+                            .foregroundStyle(Theme.Color.brand1)
                             .frame(width: 32, height: 32)
                             .background(
-                                selection == dest ? AnyShapeStyle(Theme.Color.brandGradient) : AnyShapeStyle(Theme.Color.brand1.opacity(0.10)),
+                                Theme.Color.brand1.opacity(selection == dest ? 0.22 : 0.10),
                                 in: RoundedRectangle(cornerRadius: 8)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(selection == dest ? Theme.Color.brand1.opacity(0.55) : Color.clear, lineWidth: 1)
                             )
                         Text(dest.title)
                             .font(Theme.FontStyle.body.weight(.medium))

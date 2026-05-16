@@ -74,6 +74,8 @@ struct ProfileView: View {
         .background(Theme.Color.bg)
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+        .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .fullScreenCover(isPresented: $showAvatarFullscreen) {
             AvatarFullscreenViewer(avatarRef: primaryPersona?.photoRef) {
                 showAvatarFullscreen = false

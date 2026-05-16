@@ -35,7 +35,8 @@ struct PeopleView: View {
         .background(Theme.Color.bg)
         .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+        .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 SidebarToggleButton()

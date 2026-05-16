@@ -129,6 +129,8 @@ struct PersonaEditView: View {
         .background(Theme.Color.bg)
         .navigationTitle(model.existingID == nil ? "New persona" : "Edit persona")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+        .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {

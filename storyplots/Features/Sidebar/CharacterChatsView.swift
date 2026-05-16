@@ -57,6 +57,8 @@ struct CharacterChatsView: View {
         .background(Theme.Color.bg)
         .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+        .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Button {

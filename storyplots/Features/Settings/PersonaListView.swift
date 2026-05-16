@@ -55,8 +55,13 @@ struct PersonaListView: View {
 
             Section {
                 NavigationLink(value: PersonaListRoute.edit(personaID: nil)) {
-                    Label("New persona", systemImage: "plus.circle.fill")
-                        .foregroundStyle(Theme.Color.brand1)
+                    Label {
+                        Text("New persona")
+                            .foregroundStyle(Theme.Color.fg)
+                    } icon: {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(Theme.Color.brand1)
+                    }
                 }
             }
         }
@@ -64,6 +69,8 @@ struct PersonaListView: View {
         .background(Theme.Color.bg)
         .navigationTitle("Personas")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+        .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .navigationDestination(for: PersonaListRoute.self) { route in
             switch route {
             case .edit(let id):

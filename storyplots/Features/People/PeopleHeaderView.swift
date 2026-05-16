@@ -80,15 +80,18 @@ struct PeopleHeaderView: View {
                         .font(Theme.FontStyle.timestamp.weight(.semibold))
                         .padding(.horizontal, Theme.Spacing.s3)
                         .padding(.vertical, Theme.Spacing.s2)
-                        .foregroundStyle(filter == f ? Theme.Color.fgOnBrand : Theme.Color.fg1)
+                        .foregroundStyle(filter == f ? Theme.Color.brand1 : Theme.Color.fg1)
                         .background(
                             filter == f
-                                ? AnyShapeStyle(Theme.Color.brandGradient)
+                                ? AnyShapeStyle(Theme.Color.brand1.opacity(0.18))
                                 : AnyShapeStyle(Theme.Material.chip),
                             in: Capsule()
                         )
                         .overlay(
-                            Capsule().stroke(filter == f ? Color.clear : Theme.Color.borderSoft, lineWidth: 1)
+                            Capsule().stroke(
+                                filter == f ? Theme.Color.brand1.opacity(0.55) : Theme.Color.borderSoft,
+                                lineWidth: 1
+                            )
                         )
                 }
                 .buttonStyle(.plain)

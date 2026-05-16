@@ -42,6 +42,8 @@ struct CharacterLandingView: View {
         .brandTopWash()
         .navigationTitle(character.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+        .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
