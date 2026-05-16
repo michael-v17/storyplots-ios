@@ -41,7 +41,8 @@ struct CharacterChatsView: View {
                                     conversation: conv,
                                     accent: accent,
                                     avatarRef: avatarRef,
-                                    previewText: previews[conv.id]
+                                    previewText: previews[conv.id],
+                                    showCharacterName: false
                                 )
                                 .matchedTransitionSource(id: "card-\(conv.id)", in: transitionNamespace)
                             }
