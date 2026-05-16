@@ -88,15 +88,17 @@ struct AuthorsNotePanelView: View {
         saving = true
         defer { saving = false }
         do {
+            let uid = try await client.auth.session.user.id.uuidString
             struct Payload: Encodable {
                 let conversation_id: String
+                let user_id: String
                 let notes_text: String
                 let injection_depth: Int
             }
             try await client
                 .from("authors_notes")
                 .upsert(
-                    Payload(conversation_id: conversationID, notes_text: notesText, injection_depth: depth),
+                    Payload(conversation_id: conversationID, user_id: uid, notes_text: notesText, injection_depth: depth),
                     onConflict: "conversation_id"
                 )
                 .execute()
