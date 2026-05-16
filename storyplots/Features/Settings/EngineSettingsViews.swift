@@ -102,9 +102,9 @@ struct ImageEngineSettingsView: View {
 struct MemoryEngineSettingsView: View {
     let client: SupabaseClient
 
-    @State private var enabled: Bool = true
-    @State private var topK: Int = 8
-    @State private var minSimilarity: Double = 0.6
+    @State private var enabled: Bool = false
+    @State private var topK: Int = 5
+    @State private var minSimilarity: Double = 0.5
     @State private var extractionPrompt: String = ""
     @State private var loadState: LoadState = .idle
     @State private var saving: Bool = false
@@ -121,7 +121,7 @@ struct MemoryEngineSettingsView: View {
                     }
             }
             Section("Retrieval") {
-                Stepper(value: $topK, in: 1...32) {
+                Stepper(value: $topK, in: 1...10) {
                     HStack { Text("Top K"); Spacer(); Text("\(topK)").foregroundStyle(Theme.Color.fg2) }
                 }
                 .onChange(of: topK) { _, _ in Task { await save() } }
@@ -156,52 +156,35 @@ struct MemoryEngineSettingsView: View {
 
     private func load() async {
         loadState = .loading
-        do {
-            struct Row: Decodable {
-                let memory_enabled: Bool?
-                let memory_top_k: Int?
-                let memory_min_similarity: Double?
-                let memory_extraction_prompt: String?
-            }
-            let rows: [Row] = try await client
-                .from("users")
-                .select("memory_enabled, memory_top_k, memory_min_similarity, memory_extraction_prompt")
-                .limit(1)
-                .execute()
-                .value
-            if let row = rows.first {
-                enabled = row.memory_enabled ?? true
-                topK = row.memory_top_k ?? 8
-                minSimilarity = row.memory_min_similarity ?? 0.6
-                extractionPrompt = row.memory_extraction_prompt ?? ""
-            }
-            loadState = .loaded
-        } catch {
-            // Soft-fail — columns may not all exist; keep defaults.
-            loadState = .loaded
+        let store = PreferenceFamilyStore(client: client, family: "memory")
+        let prefs = (try? await store.load()) ?? [:]
+        if let v = prefs["enabled"] as? Bool { enabled = v }
+        if let v = prefs["retrieval_top_k"] as? Int {
+            topK = max(1, min(10, v))
+        } else if let v = prefs["retrieval_top_k"] as? Double {
+            topK = max(1, min(10, Int(v.rounded())))
         }
+        if let v = prefs["retrieval_similarity_threshold"] as? Double {
+            minSimilarity = v
+        }
+        if let v = prefs["extraction_prompt"] as? String {
+            extractionPrompt = v
+        }
+        loadState = .loaded
     }
 
     private func save() async {
         saving = true
         defer { saving = false }
-        do {
-            struct Update: Encodable {
-                let memory_enabled: Bool
-                let memory_top_k: Int
-                let memory_min_similarity: Double
-                let memory_extraction_prompt: String
-            }
-            if let uid = try? await client.auth.session.user.id.uuidString {
-                try await client
-                    .from("users")
-                    .update(Update(memory_enabled: enabled, memory_top_k: topK, memory_min_similarity: minSimilarity, memory_extraction_prompt: extractionPrompt))
-                    .eq("id", value: uid)
-                    .execute()
-            }
-        } catch {
-            // Soft-fail.
-        }
+        let store = PreferenceFamilyStore(client: client, family: "memory")
+        let trimmedPrompt = extractionPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        let payload: [String: Any] = [
+            "enabled": enabled,
+            "retrieval_top_k": topK,
+            "retrieval_similarity_threshold": minSimilarity,
+            "extraction_prompt": trimmedPrompt.isEmpty ? NSNull() : extractionPrompt
+        ]
+        try? await store.save(payload)
     }
 }
 
