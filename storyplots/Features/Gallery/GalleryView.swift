@@ -170,10 +170,8 @@ struct GalleryTile: View {
     let namespace: Namespace.ID
     let onTap: () -> Void
 
-    @State private var url: URL?
-    @State private var didResolve: Bool = false
-
     var body: some View {
+        let image = self.image
         Button(action: onTap) {
             ZStack {
                 // Always reserve a square slot — content paints on top.
@@ -182,23 +180,26 @@ struct GalleryTile: View {
                     .aspectRatio(1, contentMode: .fit)
                     .shimmer()
 
-                if let url {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let img):
-                            img.resizable().scaledToFill()
-                        case .failure:
-                            placeholder
-                        case .empty:
-                            Color.clear
-                        @unknown default:
-                            placeholder
-                        }
+                CachedRemoteImage(
+                    cacheKey: Self.cacheKey(for: image),
+                    resolver: { @Sendable in
+                        await SupabaseStorageHelper.shared.displayURL(
+                            engine: image.engine,
+                            externalURL: image.external_url,
+                            storageRef: image.storage_ref
+                        )
                     }
-                    .aspectRatio(1, contentMode: .fit)
-                    .clipped()
-                } else if didResolve || image.sfw_blocked == true {
-                    placeholder
+                ) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().scaledToFill()
+                            .aspectRatio(1, contentMode: .fit)
+                            .clipped()
+                    case .failure:
+                        placeholder
+                    case .empty:
+                        Color.clear
+                    }
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
@@ -207,9 +208,18 @@ struct GalleryTile: View {
                     .stroke(Theme.Color.borderSoft, lineWidth: 1)
             )
             .matchedGeometryEffect(id: "img-\(image.id)", in: namespace)
-            .task(id: image.id) { await loadURL() }
         }
         .buttonStyle(.plain)
+    }
+
+    private static func cacheKey(for image: GeneratedImage) -> String? {
+        if let ref = image.storage_ref, !ref.isEmpty {
+            return "media:\(ref)"
+        }
+        if let ext = image.external_url, !ext.isEmpty {
+            return "media-ext:\(ext)"
+        }
+        return nil
     }
 
     private var placeholder: some View {
@@ -219,15 +229,5 @@ struct GalleryTile: View {
                 .font(.system(size: 26))
                 .foregroundStyle(Theme.Color.fg4)
         }
-    }
-
-    private func loadURL() async {
-        let resolved = await SupabaseStorageHelper.shared.displayURL(
-            engine: image.engine,
-            externalURL: image.external_url,
-            storageRef: image.storage_ref
-        )
-        url = resolved
-        didResolve = true
     }
 }

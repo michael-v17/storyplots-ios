@@ -10,7 +10,7 @@ import SwiftUI
 ///   from the `avatars` bucket using `SupabaseStorageHelper`, caches it, and
 ///   re-resolves only when the cached entry expires.
 struct AvatarView: View {
-    private enum Source {
+    private enum Source: Sendable {
         case url(URL?)
         case ref(String?)
     }
@@ -20,9 +20,6 @@ struct AvatarView: View {
     private let accent: Color
     private let size: CGFloat
     private let ringWidth: CGFloat
-
-    @State private var resolvedURL: URL?
-    @State private var didResolve: Bool = false
 
     init(imageURL: URL? = nil,
          name: String,
@@ -49,54 +46,41 @@ struct AvatarView: View {
     }
 
     var body: some View {
-        ZStack {
-            if let url = currentURL {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    case .failure, .empty:
-                        fallback
-                    @unknown default:
-                        fallback
-                    }
+        let source = self.source
+        return ZStack {
+            CachedRemoteImage(
+                cacheKey: cacheKey,
+                resolver: { @Sendable in await Self.resolveURL(for: source) }
+            ) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable().scaledToFill()
+                case .empty, .failure:
+                    fallback
                 }
-            } else {
-                fallback
             }
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
         .overlay(Circle().stroke(accent.opacity(0.55), lineWidth: ringWidth))
-        .task(id: refKey) { await resolveIfNeeded() }
     }
 
-    private var currentURL: URL? {
+    private var cacheKey: String? {
+        switch source {
+        case .url:        return nil
+        case .ref(let r):
+            guard let r, !r.isEmpty else { return nil }
+            return "avatar:\(r)"
+        }
+    }
+
+    private static func resolveURL(for source: Source) async -> URL? {
         switch source {
         case .url(let u): return u
-        case .ref:        return resolvedURL
+        case .ref(let r):
+            guard let r, !r.isEmpty else { return nil }
+            return await SupabaseStorageHelper.shared.avatarURL(path: r)
         }
-    }
-
-    private var refKey: String {
-        switch source {
-        case .url(let u): return u?.absoluteString ?? ""
-        case .ref(let r): return r ?? ""
-        }
-    }
-
-    private func resolveIfNeeded() async {
-        guard case .ref(let ref) = source else { return }
-        guard let ref, !ref.isEmpty else {
-            resolvedURL = nil
-            didResolve = true
-            return
-        }
-        let url = await SupabaseStorageHelper.shared.avatarURL(path: ref)
-        resolvedURL = url
-        didResolve = true
     }
 
     private var fallback: some View {

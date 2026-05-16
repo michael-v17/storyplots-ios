@@ -8,8 +8,6 @@ struct CharacterCardView: View {
     let accent: Color
     let avatarRef: String?
 
-    @State private var avatarURL: URL?
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             avatar
@@ -21,29 +19,34 @@ struct CharacterCardView: View {
             RoundedRectangle(cornerRadius: Theme.Radius.card)
                 .stroke(accent.opacity(0.55), lineWidth: 2)
         )
-        .task(id: avatarRef ?? "") { await resolveAvatar() }
     }
 
     private var avatar: some View {
-        ZStack {
+        let ref = avatarRef
+        return ZStack {
             accent.opacity(0.18)
-            if let url = avatarURL {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    case .empty, .failure:
-                        initialsFallback
-                    @unknown default:
-                        initialsFallback
-                    }
+            CachedRemoteImage(
+                cacheKey: Self.cacheKey(for: ref),
+                resolver: { @Sendable in
+                    guard let ref, !ref.isEmpty else { return nil }
+                    return await SupabaseStorageHelper.shared.avatarURL(path: ref)
                 }
-            } else {
-                initialsFallback
+            ) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable().scaledToFill()
+                case .empty, .failure:
+                    initialsFallback
+                }
             }
         }
         .aspectRatio(1, contentMode: .fit)
         .clipped()
+    }
+
+    private static func cacheKey(for ref: String?) -> String? {
+        guard let ref, !ref.isEmpty else { return nil }
+        return "avatar:\(ref)"
     }
 
     private var initialsFallback: some View {
@@ -80,9 +83,5 @@ struct CharacterCardView: View {
         guard !trimmed.isEmpty else { return "·" }
         let parts = trimmed.split(separator: " ", omittingEmptySubsequences: true).prefix(2)
         return String(parts.compactMap { $0.first }).uppercased()
-    }
-
-    private func resolveAvatar() async {
-        avatarURL = await SupabaseStorageHelper.shared.avatarURL(path: avatarRef)
     }
 }
