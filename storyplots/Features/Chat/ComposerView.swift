@@ -70,7 +70,13 @@ struct ComposerView: View {
                     .frame(width: 36, height: 36)
                     .background(
                         canSend
-                            ? AnyShapeStyle(Theme.Color.brandGradient)
+                            ? AnyShapeStyle(
+                                LinearGradient(
+                                    colors: [accent, accent.opacity(0.7)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                             : AnyShapeStyle(Theme.Color.bg3),
                         in: Circle()
                     )

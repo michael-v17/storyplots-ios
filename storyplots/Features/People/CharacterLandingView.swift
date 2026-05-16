@@ -39,7 +39,7 @@ struct CharacterLandingView: View {
             .padding(.bottom, Theme.Spacing.s12)
         }
         .background(Theme.Color.bg)
-        .brandTopWash()
+        .accentTopWash(color: accent, intensity: 0.14)
         .navigationTitle(character.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.Material.navBar, for: .navigationBar)

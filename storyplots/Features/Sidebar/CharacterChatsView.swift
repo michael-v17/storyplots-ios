@@ -55,7 +55,7 @@ struct CharacterChatsView: View {
             }
         }
         .background(Theme.Color.bg)
-        .brandTopWash()
+        .accentTopWash(color: accent, intensity: 0.14)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
         .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
