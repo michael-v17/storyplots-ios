@@ -26,6 +26,9 @@ final class CharacterEditViewModel {
     private let client: SupabaseClient
     let existingID: String?
     var avatarRef: String?
+    /// Raw `characters.mode` enum value from the loaded row — surfaced read-only
+    /// in the Settings tab (schema.md §2.3 says mode is immutable after creation).
+    var modeRaw: String?
 
     init(client: SupabaseClient, character: Character? = nil) {
         self.client = client
@@ -36,6 +39,7 @@ final class CharacterEditViewModel {
         self.systemPrompt = character?.system_prompt ?? ""
         self.accentHex = character?.accent_color ?? "#F5B547"
         self.avatarRef = character?.avatar_ref
+        self.modeRaw = character?.mode
     }
 
     var canSave: Bool {
@@ -158,6 +162,79 @@ final class CharacterEditViewModel {
         } catch {
             saveState = .error(error.localizedDescription)
             return nil
+        }
+    }
+
+
+    /// Upload user-picked photo bytes to the `avatars` bucket and persist
+    /// `characters.avatar_ref`. Mirrors `PersonaEditViewModel.uploadPhoto`.
+    @discardableResult
+    func uploadPhoto(data: Data, fileExtension: String) async -> String? {
+        guard let id = existingID else { return nil }
+        saveState = .saving
+        do {
+            let session = try await client.auth.session
+            let userID = session.user.id.uuidString
+            let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+            let cleanExt = fileExtension.lowercased().trimmingCharacters(in: .punctuationCharacters)
+            let safeExt = cleanExt.isEmpty ? "png" : cleanExt
+            let path = "\(userID)/character-\(id)-\(timestamp).\(safeExt)"
+
+            _ = try await client.storage
+                .from("avatars")
+                .upload(path, data: data, options: FileOptions(contentType: Self.contentType(for: safeExt), upsert: false))
+
+            let previous = avatarRef
+
+            struct Update: Encodable { let avatar_ref: String }
+            try await client
+                .from("characters")
+                .update(Update(avatar_ref: path))
+                .eq("id", value: id)
+                .execute()
+            avatarRef = path
+
+            if let previous, !previous.isEmpty, previous != path {
+                _ = try? await client.storage.from("avatars").remove(paths: [previous])
+            }
+
+            saveState = .saved
+            return path
+        } catch {
+            saveState = .error(error.localizedDescription)
+            return nil
+        }
+    }
+
+    /// Clear the character's photo: null `avatar_ref` + best-effort storage cleanup.
+    @discardableResult
+    func removePhoto() async -> Bool {
+        guard let id = existingID, let previous = avatarRef, !previous.isEmpty else { return false }
+        saveState = .saving
+        do {
+            struct Update: Encodable { let avatar_ref: String? }
+            try await client
+                .from("characters")
+                .update(Update(avatar_ref: nil))
+                .eq("id", value: id)
+                .execute()
+            _ = try? await client.storage.from("avatars").remove(paths: [previous])
+            avatarRef = nil
+            saveState = .saved
+            return true
+        } catch {
+            saveState = .error(error.localizedDescription)
+            return false
+        }
+    }
+
+    private static func contentType(for ext: String) -> String {
+        switch ext {
+        case "jpg", "jpeg": return "image/jpeg"
+        case "webp":        return "image/webp"
+        case "heic":        return "image/heic"
+        case "gif":         return "image/gif"
+        default:            return "image/png"
         }
     }
 
