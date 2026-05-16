@@ -43,7 +43,7 @@ struct ComposerView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.s2) {
+        HStack(alignment: .center, spacing: Theme.Spacing.s3) {
             if let chatPanel {
                 ChatPanelsMenu(presented: chatPanel, accent: accent)
                     .frame(width: 40, height: 40)
@@ -120,11 +120,11 @@ struct ComposerView: View {
                 Haptics.impact(.light)
             } label: {
                 Image(systemName: "mic.fill")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(accent)
                     .frame(width: 40, height: 40)
-                    .background(accent.opacity(0.14), in: Circle())
-                    .overlay(Circle().stroke(accent.opacity(0.4), lineWidth: 1))
+                    .background(accent.opacity(0.18), in: Circle())
+                    .overlay(Circle().stroke(accent.opacity(0.55), lineWidth: 1))
             }
             .accessibilityLabel("Voice input")
         }
@@ -152,11 +152,11 @@ struct ChatPanelsMenu: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(accent)
                 .frame(width: 40, height: 40)
-                .background(accent.opacity(0.14), in: Circle())
-                .overlay(Circle().stroke(accent.opacity(0.4), lineWidth: 1))
+                .background(accent.opacity(0.18), in: Circle())
+                .overlay(Circle().stroke(accent.opacity(0.55), lineWidth: 1))
         }
         .accessibilityLabel("Chat controls")
     }

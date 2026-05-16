@@ -106,7 +106,21 @@ final class ChatViewModel {
             }
             self.variantsByMessage = byMessage
 
-            self.items = messages.map { MessageItem(message: $0, activeVariant: $0.active_variant_id.flatMap { byID[$0] }) }
+            var items = messages.map { MessageItem(message: $0, activeVariant: $0.active_variant_id.flatMap { byID[$0] }) }
+            // Mark the first assistant message as the scenario card iff its
+            // body matches `character.scenario` — PersonaLLM persists the
+            // chosen scenario as message #0 and renders it as a distinct
+            // card. We re-derive the flag at load time so legacy threads
+            // without a recorded scenario stay regular bubbles.
+            if let scenarioText = character?.scenario?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !scenarioText.isEmpty,
+               let firstIdx = items.firstIndex(where: { $0.role == .assistant }) {
+                let firstBody = items[firstIdx].body.trimmingCharacters(in: .whitespacesAndNewlines)
+                if firstBody == scenarioText {
+                    items[firstIdx].isScenario = true
+                }
+            }
+            self.items = items
 
             // Generated images attached to assistant messages in this conversation.
             await loadImages()
@@ -625,6 +639,108 @@ final class ChatViewModel {
             chatLog.error("stream threw: \(error.localizedDescription, privacy: .public)")
             streamState = .error(error.localizedDescription)
         }
+    }
+
+    // MARK: - Sibling conversation
+
+    /// Create a fresh empty conversation with the same character — wired to the
+    /// `+` toolbar item per PersonaLLM's header. Returns the new row's id so
+    /// `ChatView` can push into it. Logic mirrors
+    /// `CharacterLandingView.createConversation(scenarioBody: nil)` so the two
+    /// stay aligned until the next refactor lifts it into a shared helper.
+    func createSiblingConversation() async throws -> String {
+        guard let character else {
+            throw NSError(
+                domain: "ChatViewModel",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Character context missing — cannot start a sibling conversation."]
+            )
+        }
+        let session = try await client.auth.session
+        let userID = session.user.id.uuidString
+        let personaID = await Self.fetchPrimaryPersonaID(client: client)
+
+        struct CharacterSnapshotPayload: Encodable {
+            let name: String
+            let system_prompt: String?
+            let mode: String?
+            let scenario: String?
+        }
+        struct EmptySnapshot: Encodable {}
+        struct ConvInsert: Encodable {
+            let user_id: String
+            let character_id: String
+            let title: String
+            let character_snapshot: CharacterSnapshotPayload
+            let writing_style_snapshot: EmptySnapshot
+            let persona_id: String?
+        }
+
+        let payload = ConvInsert(
+            user_id: userID,
+            character_id: character.id,
+            title: character.name,
+            character_snapshot: CharacterSnapshotPayload(
+                name: character.name,
+                system_prompt: character.system_prompt,
+                mode: character.mode,
+                scenario: character.scenario
+            ),
+            writing_style_snapshot: EmptySnapshot(),
+            persona_id: personaID
+        )
+
+        let inserted: [Conversation] = try await client
+            .from("conversations")
+            .insert(payload)
+            .select("id, title, character_id, character_snapshot, last_message_at, updated_at")
+            .execute()
+            .value
+        guard let row = inserted.first else {
+            throw NSError(
+                domain: "ChatViewModel",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Empty conversation insert"]
+            )
+        }
+        return row.id
+    }
+
+    /// Best-effort lookup of the user's primary persona so the new
+    /// conversation can address them by the right name. Failure is non-fatal.
+    private static func fetchPrimaryPersonaID(client: SupabaseClient) async -> String? {
+        struct PersonaRow: Decodable { let id: String }
+        do {
+            let session = try await client.auth.session
+            let rows: [PersonaRow] = try await client
+                .from("user_personas")
+                .select("id")
+                .eq("user_id", value: session.user.id.uuidString)
+                .order("created_at", ascending: true)
+                .limit(1)
+                .execute()
+                .value
+            return rows.first?.id
+        } catch {
+            return nil
+        }
+    }
+
+    /// Fetch every conversation this character has for the trailing `list`
+    /// toolbar item. Returns oldest-first ordering — `CharacterChatsView`
+    /// renders the array verbatim.
+    func loadSiblingConversations() async throws -> [Conversation] {
+        guard let character else { return [] }
+        let session = try await client.auth.session
+        let rows: [Conversation] = try await client
+            .from("conversations")
+            .select("id, title, character_id, character_snapshot, last_message_at, updated_at")
+            .eq("user_id", value: session.user.id.uuidString)
+            .eq("character_id", value: character.id)
+            .order("updated_at", ascending: false)
+            .execute()
+            .value
+        return rows
     }
 
     private func makeChatRequest(extra: [String: Any] = [:]) async throws -> URLRequest {

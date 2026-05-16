@@ -46,4 +46,54 @@ extension View {
     func brandTopWash(height: CGFloat = 220, intensity: Double = 0.18) -> some View {
         modifier(AccentTopWash(color: Theme.Color.brand1, height: height, intensity: intensity))
     }
+
+    /// PersonaLLM-style halo: the character's accent appears as a soft
+    /// radial glow anchored behind the header, falling off omnidirectionally
+    /// instead of dropping straight down. Use on ChatView only — other root
+    /// surfaces keep the linear `accentTopWash`.
+    func accentHaloWash(color: Color, intensity: Double = 0.22, radius: CGFloat = 520) -> some View {
+        modifier(AccentHaloWash(color: color, intensity: intensity, radius: radius))
+    }
+}
+
+/// Soft radial halo + a faint linear tail so the falloff continues past the
+/// halo's edge without re-introducing the banner look of the linear wash.
+struct AccentHaloWash: ViewModifier {
+    var color: Color
+    var intensity: Double = 0.22
+    var radius: CGFloat = 520
+
+    func body(content: Content) -> some View {
+        content
+            .background(alignment: .top) {
+                ZStack(alignment: .top) {
+                    LinearGradient(
+                        colors: [
+                            color.opacity(intensity * 0.35),
+                            color.opacity(intensity * 0.12),
+                            Color.clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: radius * 0.95)
+
+                    RadialGradient(
+                        colors: [
+                            color.opacity(intensity),
+                            color.opacity(intensity * 0.45),
+                            color.opacity(intensity * 0.12),
+                            Color.clear
+                        ],
+                        center: .top,
+                        startRadius: 0,
+                        endRadius: radius
+                    )
+                    .frame(height: radius)
+                }
+                .frame(maxWidth: .infinity)
+                .ignoresSafeArea(edges: .top)
+                .allowsHitTesting(false)
+            }
+    }
 }

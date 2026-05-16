@@ -13,6 +13,10 @@ struct ChatView: View {
     @State private var presentedImage: GeneratedImage?
     @State private var editingMessageID: String?
     @State private var showCharacterDetail: Bool = false
+    @State private var showCharacterChats: Bool = false
+    @State private var siblingConversationID: String?
+    @State private var siblingError: String?
+    @State private var creatingSibling: Bool = false
     @Namespace private var imageNamespace
     private let client: SupabaseClient
 
@@ -34,7 +38,7 @@ struct ChatView: View {
     var body: some View {
         mainStack
             .background(Theme.Color.bg)
-            .accentTopWash(color: model.accent, height: 340, intensity: 0.22)
+            .accentHaloWash(color: model.accent)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .tabBar)
@@ -53,8 +57,62 @@ struct ChatView: View {
                 client: client,
                 model: model
             ))
+            .navigationDestination(item: Binding(
+                get: { siblingConversationID.map { SiblingConversationDestination(id: $0) } },
+                set: { siblingConversationID = $0?.id }
+            )) { destination in
+                ChatView(
+                    conversationID: destination.id,
+                    character: model.character,
+                    accent: model.accent,
+                    avatarRef: model.avatarRef,
+                    client: client
+                )
+            }
+            .sheet(isPresented: $showCharacterChats) {
+                if let character = model.character {
+                    NavigationStack {
+                        CharacterChatsLoader(
+                            character: character,
+                            accent: model.accent,
+                            avatarRef: model.avatarRef,
+                            client: client,
+                            model: model,
+                            onDismiss: { showCharacterChats = false }
+                        )
+                    }
+                    .presentationDetents([.large])
+                }
+            }
+            .alert("Couldn't start a new conversation",
+                   isPresented: Binding(get: { siblingError != nil },
+                                        set: { if !$0 { siblingError = nil } })) {
+                Button("OK", role: .cancel) { siblingError = nil }
+            } message: {
+                Text(siblingError ?? "")
+            }
             .task { if model.loadState == .idle { await model.load() } }
             .onDisappear { model.stopAllAudio() }
+    }
+
+    private struct SiblingConversationDestination: Hashable {
+        let id: String
+    }
+
+    private func startSiblingConversation() {
+        guard !creatingSibling else { return }
+        creatingSibling = true
+        Haptics.impact(.medium)
+        Task {
+            do {
+                let newID = try await model.createSiblingConversation()
+                creatingSibling = false
+                siblingConversationID = newID
+            } catch {
+                creatingSibling = false
+                siblingError = error.localizedDescription
+            }
+        }
     }
 
     private var mainStack: some View {
@@ -140,6 +198,35 @@ struct ChatView: View {
                 showCharacterDetail = true
             }
         }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Haptics.impact(.light)
+                showCharacterChats = true
+            } label: {
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(model.accent)
+            }
+            .accessibilityLabel("Conversations with \(model.characterName)")
+            .disabled(model.character == nil)
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                startSiblingConversation()
+            } label: {
+                if creatingSibling {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(model.accent)
+                } else {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(model.accent)
+                }
+            }
+            .accessibilityLabel("Start a new conversation with \(model.characterName)")
+            .disabled(model.character == nil || creatingSibling)
+        }
     }
 
     private var skeletonScroll: some View {
@@ -177,29 +264,38 @@ struct ChatView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: Theme.Spacing.s3) {
                         ForEach(model.items) { item in
-                            MessageBubbleView(
-                                item: item,
-                                accent: model.accent,
-                                characterName: model.characterName,
-                                avatarRef: model.avatarRef,
-                                variantPagination: model.variantPagination(for: item.id, currentBody: item.body),
-                                images: model.images(for: item.id),
-                                imageRequestLoading: model.imageRequestState[item.id] == .loading,
-                                audioState: model.audioState(for: item.id),
-                                imageNamespace: imageNamespace,
-                                onCopy: { UIPasteboard.general.string = item.body },
-                                onRegenerate: { model.regenerate(messageID: item.id) },
-                                onDelete: { model.deleteMessage(item.id) },
-                                onFork: { forkAnchorID = item.id },
-                                onSelectVariant: { idx in model.setActiveVariant(messageID: item.id, index: idx) },
-                                onRequestImage: { model.requestImage(messageID: item.id, overrides: generationOverrides) },
-                                onSelectImage: { img in
-                                    withAnimation(Theme.Motion.smooth) { presentedImage = img }
-                                },
-                                onToggleAudio: { model.toggleAudio(messageID: item.id) },
-                                onEdit: { editingMessageID = item.id }
-                            )
-                            .id(item.id)
+                            if item.isScenario {
+                                ScenarioCardView(
+                                    text: item.body,
+                                    accent: model.accent,
+                                    scenarioTitle: nil
+                                )
+                                .id(item.id)
+                            } else {
+                                MessageBubbleView(
+                                    item: item,
+                                    accent: model.accent,
+                                    characterName: model.characterName,
+                                    avatarRef: model.avatarRef,
+                                    variantPagination: model.variantPagination(for: item.id, currentBody: item.body),
+                                    images: model.images(for: item.id),
+                                    imageRequestLoading: model.imageRequestState[item.id] == .loading,
+                                    audioState: model.audioState(for: item.id),
+                                    imageNamespace: imageNamespace,
+                                    onCopy: { UIPasteboard.general.string = item.body },
+                                    onRegenerate: { model.regenerate(messageID: item.id) },
+                                    onDelete: { model.deleteMessage(item.id) },
+                                    onFork: { forkAnchorID = item.id },
+                                    onSelectVariant: { idx in model.setActiveVariant(messageID: item.id, index: idx) },
+                                    onRequestImage: { model.requestImage(messageID: item.id, overrides: generationOverrides) },
+                                    onSelectImage: { img in
+                                        withAnimation(Theme.Motion.smooth) { presentedImage = img }
+                                    },
+                                    onToggleAudio: { model.toggleAudio(messageID: item.id) },
+                                    onEdit: { editingMessageID = item.id }
+                                )
+                                .id(item.id)
+                            }
                         }
                         if model.items.isEmpty {
                             emptyState
@@ -317,5 +413,84 @@ private struct ChatSheetsModifier: ViewModifier {
                     .zIndex(50)
                 }
             }
+    }
+}
+
+/// Small wrapper around `CharacterChatsView` that fetches the per-character
+/// conversation list on appear. Used by the chat header's `list` trailing
+/// toolbar item so we don't have to thread the conversation array through
+/// every screen that opens a chat. The sheet shows a single-step
+/// `ProgressView` until the rows resolve.
+struct CharacterChatsLoader: View {
+    let character: Character
+    let accent: Color
+    let avatarRef: String?
+    let client: SupabaseClient
+    let model: ChatViewModel
+    let onDismiss: () -> Void
+
+    @State private var conversations: [Conversation] = []
+    @State private var loadingError: String?
+    @State private var didLoad: Bool = false
+
+    var body: some View {
+        Group {
+            if !didLoad {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(accent)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Theme.Color.bg)
+            } else if let loadingError {
+                VStack(spacing: Theme.Spacing.s3) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(Theme.Color.destructive)
+                    Text(loadingError)
+                        .font(Theme.FontStyle.meta)
+                        .foregroundStyle(Theme.Color.fg2)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Theme.Spacing.s4)
+                    Button("Retry") { Task { await load() } }
+                        .buttonStyle(.borderedProminent)
+                        .tint(accent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.Color.bg)
+            } else {
+                CharacterChatsView(
+                    character: character,
+                    conversations: conversations,
+                    accent: accent,
+                    avatarRef: avatarRef,
+                    client: client
+                )
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    Haptics.impact(.light)
+                    onDismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(accent)
+                }
+                .accessibilityLabel("Close")
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        loadingError = nil
+        do {
+            conversations = try await model.loadSiblingConversations()
+            didLoad = true
+        } catch {
+            loadingError = error.localizedDescription
+            didLoad = true
+        }
     }
 }

@@ -50,14 +50,18 @@ struct MessageBubbleView: View {
                                 onSelect: onSelectImage
                             )
                         }
+                        timestampLabel
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     assistantActionRail
                         .padding(.top, 2)
                 } else {
                     Spacer(minLength: Theme.Spacing.s6)
-                    bubble
-                        .frame(maxWidth: .infinity, alignment: .trailing)
+                    VStack(alignment: .trailing, spacing: Theme.Spacing.s1) {
+                        bubble
+                        timestampLabel
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
             if let (current, total) = variantPagination, item.role == .assistant {
@@ -200,11 +204,12 @@ struct MessageBubbleView: View {
         }
         .padding(Theme.Spacing.s3)
         .background(
-            // PersonaLLM: assistant text reads directly on the dark surface
-            // with a thin accent border (no fill); user message uses the
-            // character-accent pill so identity flows through both directions.
+            // PersonaLLM: assistant bubble has a subtly darker fill than the
+            // surrounding wash so text reads as a delineated panel (not
+            // floating). bg1 is one step darker than the host bg; the accent
+            // stroke still carries identity. User pill stays accent-filled.
             RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .fill(isAssistant ? AnyShapeStyle(Color.clear) : AnyShapeStyle(accent))
+                .fill(isAssistant ? AnyShapeStyle(Theme.Color.bg1) : AnyShapeStyle(accent))
         )
         .overlay(alignment: .topLeading) {
             if isAssistant, let (current, total) = variantPagination, total > 1 {
@@ -264,5 +269,44 @@ struct MessageBubbleView: View {
         } else {
             Text(item.body)
         }
+    }
+
+    /// `HH:mm` clock label beneath every bubble, matching PersonaLLM's per-
+    /// message anatomy. Aligned via the surrounding VStack (leading for
+    /// assistant, trailing for user).
+    @ViewBuilder
+    private var timestampLabel: some View {
+        if let formatted = Self.formattedClock(from: item.createdAt) {
+            Text(formatted)
+                .font(Theme.FontStyle.timestamp)
+                .foregroundStyle(Theme.Color.fg4)
+                .padding(.horizontal, Theme.Spacing.s1)
+        }
+    }
+
+    private static let iso8601Parser: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let iso8601ParserNoFraction: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    private static let clockFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        f.locale = Locale.current
+        f.timeZone = TimeZone.current
+        return f
+    }()
+
+    private static func formattedClock(from iso: String) -> String? {
+        guard !iso.isEmpty else { return nil }
+        let date = iso8601Parser.date(from: iso) ?? iso8601ParserNoFraction.date(from: iso)
+        return date.map(clockFormatter.string(from:))
     }
 }

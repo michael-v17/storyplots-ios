@@ -33,6 +33,12 @@ struct MessageItem: Identifiable, Sendable, Equatable {
     var role: MessageRole
     var body: String
     var createdAt: String
+    /// Transient flag (not persisted) that marks the first assistant message
+    /// of a conversation when its body matches the character's stored
+    /// `scenario`. `ChatView` swaps the renderer to `ScenarioCardView` so the
+    /// scene-setting message reads as a distinct top-of-thread card per
+    /// PersonaLLM's chat anatomy.
+    var isScenario: Bool = false
 
     init(message: Message, activeVariant: MessageVariant?) {
         self.id = message.id

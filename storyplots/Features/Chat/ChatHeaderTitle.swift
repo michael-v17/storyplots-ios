@@ -18,8 +18,8 @@ struct ChatHeaderTitle: View {
                     avatarRef: avatarRef,
                     name: characterName,
                     accent: accent,
-                    size: 32,
-                    ringWidth: 1.5
+                    size: 36,
+                    ringWidth: 1.75
                 )
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 4) {
