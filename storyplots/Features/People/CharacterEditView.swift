@@ -217,10 +217,18 @@ struct CharacterEditView: View {
 
     @ViewBuilder
     private var infoTab: some View {
-        Section("Identity") {
+        Section {
             TextField("Name", text: $model.name)
                 .textInputAutocapitalization(.words)
             TextField("Tagline", text: $model.tagline)
+        } header: {
+            Text("Identity")
+        } footer: {
+            if model.name.trimmingCharacters(in: .whitespaces).isEmpty {
+                Text("Name is required to save.")
+                    .font(Theme.FontStyle.timestamp)
+                    .foregroundStyle(Theme.Color.destructive)
+            }
         }
 
         Section {
