@@ -153,6 +153,39 @@ final class ChatViewModel {
         }
     }
 
+
+    /// Optimistic delete of a generated image from a message in the current
+    /// chat. Hits `DELETE /images/{id}` (same endpoint Gallery uses) and rolls
+    /// the optimistic removal back if the request fails.
+    func deleteGeneratedImage(_ image: GeneratedImage) {
+        guard let messageID = image.message_id else { return }
+        let snapshot = imageRequestState
+        var current = imagesByMessage[messageID] ?? []
+        current.removeAll { $0.id == image.id }
+        imagesByMessage[messageID] = current
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let session = try await self.client.auth.session
+                let jwt = session.accessToken
+                var request = URLRequest(url: BackendConfig.url
+                    .appendingPathComponent("images")
+                    .appendingPathComponent(image.id))
+                request.httpMethod = "DELETE"
+                request.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+                let (_, response) = try await URLSession.shared.data(for: request)
+                if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                    chatLog.error("delete image http=\(http.statusCode, privacy: .public)")
+                    self.imageRequestState = snapshot
+                }
+            } catch {
+                chatLog.error("delete image failed: \(error.localizedDescription, privacy: .public)")
+                self.imageRequestState = snapshot
+            }
+        }
+    }
+
     private func runRequestImage(messageID: String, overrides: GenerationOverrides) async {
         do {
             let session = try await client.auth.session

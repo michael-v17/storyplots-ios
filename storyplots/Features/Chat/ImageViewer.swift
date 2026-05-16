@@ -9,6 +9,11 @@ struct ImageViewer: View {
     let image: GeneratedImage
     let namespace: Namespace.ID
     let onDismiss: () -> Void
+    /// Optional regenerate hook — only chat surfaces (where we have a
+    /// `message_id`) pass a non-nil callback. Gallery leaves it nil.
+    var onRegenerate: (() -> Void)? = nil
+    /// Optional delete hook — both Gallery and Chat pass one.
+    var onDelete: (() -> Void)? = nil
 
     @State private var displayURL: URL?
     @State private var scale: CGFloat = 1.0
@@ -16,6 +21,8 @@ struct ImageViewer: View {
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
     @State private var dragOffset: CGSize = .zero
+    @State private var promptExpanded: Bool = false
+    @State private var showDeleteConfirm: Bool = false
 
     var body: some View {
         ZStack {
@@ -69,32 +76,160 @@ struct ImageViewer: View {
                 }
 
             VStack {
-                HStack {
-                    Spacer()
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(.thinMaterial)
-                            .background(Circle().fill(.black.opacity(0.5)))
-                    }
-                    .padding(Theme.Spacing.s4)
-                }
+                topBar
                 Spacer()
-                if let prompt = image.refined_prompt ?? image.prompt, !prompt.isEmpty {
-                    Text(prompt)
-                        .font(Theme.FontStyle.meta)
-                        .foregroundStyle(Theme.Color.fg1)
-                        .multilineTextAlignment(.leading)
-                        .padding(Theme.Spacing.s3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
-                        .padding(Theme.Spacing.s4)
-                }
+                promptCard
+                actionBar
             }
         }
         .task { await loadURL() }
+        .confirmationDialog("Delete this image?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                Haptics.notify(.warning)
+                onDelete?()
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently removes the generated image.")
+        }
+    }
+
+    // MARK: - Chrome
+
+    private var topBar: some View {
+        HStack(alignment: .center) {
+            chipButton(systemImage: "xmark", action: dismiss)
+                .accessibilityLabel("Close")
+            Spacer()
+            if let dateLabel {
+                Text(dateLabel)
+                    .font(Theme.FontStyle.timestamp.weight(.semibold))
+                    .foregroundStyle(Theme.Color.fg1)
+                    .padding(.horizontal, Theme.Spacing.s3)
+                    .padding(.vertical, Theme.Spacing.s2)
+                    .background(.thinMaterial, in: Capsule())
+            }
+            Spacer()
+            // Reserved chip slot keeps the title pill centered (favorite goes here later).
+            Color.clear.frame(width: 36, height: 36)
+        }
+        .padding(.horizontal, Theme.Spacing.s4)
+        .padding(.top, Theme.Spacing.s5)
+    }
+
+    @ViewBuilder
+    private var promptCard: some View {
+        if let prompt = image.refined_prompt ?? image.prompt, !prompt.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
+                HStack {
+                    Text("PROMPT")
+                        .font(Theme.FontStyle.sectionLabel)
+                        .foregroundStyle(Theme.Color.fg3)
+                    if let dim = image.dimensions {
+                        Text("· \(dim.w, format: .number.grouping(.never))×\(dim.h, format: .number.grouping(.never))")
+                            .font(Theme.FontStyle.timestamp.monospacedDigit())
+                            .foregroundStyle(Theme.Color.fg3)
+                    }
+                    Spacer(minLength: 0)
+                    Button {
+                        withAnimation(Theme.Motion.snappy) { promptExpanded.toggle() }
+                    } label: {
+                        Image(systemName: promptExpanded ? "chevron.down" : "chevron.up")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.Color.fg2)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Text(prompt)
+                    .font(Theme.FontStyle.meta)
+                    .foregroundStyle(Theme.Color.fg1)
+                    .lineLimit(promptExpanded ? nil : 1)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(Theme.Spacing.s3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+            .padding(.horizontal, Theme.Spacing.s4)
+        }
+    }
+
+    private var actionBar: some View {
+        HStack(spacing: Theme.Spacing.s2) {
+            if let displayURL {
+                ShareLink(item: displayURL) {
+                    actionLabel("Share", systemImage: "square.and.arrow.up", role: .primary)
+                }
+                .buttonStyle(.plain)
+            }
+            if let onRegenerate {
+                Button {
+                    Haptics.impact(.medium)
+                    onRegenerate()
+                    dismiss()
+                } label: {
+                    actionLabel("Regenerate", systemImage: "arrow.clockwise", role: .primary)
+                }
+                .buttonStyle(.plain)
+            }
+            if onDelete != nil {
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
+                    actionLabel("Delete", systemImage: "trash", role: .destructive)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(Theme.Spacing.s2)
+        .background(.thinMaterial, in: Capsule())
+        .overlay(Capsule().stroke(Theme.Color.borderSoft, lineWidth: 0.5))
+        .padding(.bottom, Theme.Spacing.s5)
+    }
+
+    private enum ActionRole { case primary, destructive }
+
+    @ViewBuilder
+    private func actionLabel(_ title: String, systemImage: String, role: ActionRole) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .semibold))
+            Text(title)
+                .font(Theme.FontStyle.timestamp.weight(.semibold))
+        }
+        .foregroundStyle(role == .destructive ? Theme.Color.destructive : Theme.Color.brand1)
+        .padding(.horizontal, Theme.Spacing.s3)
+        .padding(.vertical, Theme.Spacing.s2)
+        .frame(maxWidth: .infinity)
+        .background(
+            (role == .destructive ? Theme.Color.destructive : Theme.Color.brand1).opacity(0.12),
+            in: Capsule()
+        )
+    }
+
+    private func chipButton(systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Theme.Color.fg)
+                .frame(width: 36, height: 36)
+                .background(.thinMaterial, in: Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var dateLabel: String? {
+        guard let raw = image.created_at else { return nil }
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let basic = ISO8601DateFormatter()
+        basic.formatOptions = [.withInternetDateTime]
+        guard let date = fractional.date(from: raw) ?? basic.date(from: raw) else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
 
     @ViewBuilder

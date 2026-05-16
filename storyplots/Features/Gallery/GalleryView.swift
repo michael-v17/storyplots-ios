@@ -42,9 +42,12 @@ struct GalleryView: View {
         .refreshable { await model.load() }
         .task { if model.loadState == .idle { await model.load() } }
         .fullScreenCover(item: $presentedImage) { image in
-            ImageViewer(image: image, namespace: galleryNamespace) {
-                presentedImage = nil
-            }
+            ImageViewer(
+                image: image,
+                namespace: galleryNamespace,
+                onDismiss: { presentedImage = nil },
+                onDelete: { model.delete(image) }
+            )
         }
         .confirmationDialog(
             "Delete this image?",

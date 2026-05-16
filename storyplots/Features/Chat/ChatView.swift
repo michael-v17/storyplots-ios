@@ -142,9 +142,17 @@ struct ChatView: View {
         .task { if model.loadState == .idle { await model.load() } }
         .overlay(alignment: .center) {
             if let img = presentedImage {
-                ImageViewer(image: img, namespace: imageNamespace) {
-                    withAnimation(Theme.Motion.smooth) { presentedImage = nil }
-                }
+                ImageViewer(
+                    image: img,
+                    namespace: imageNamespace,
+                    onDismiss: { withAnimation(Theme.Motion.smooth) { presentedImage = nil } },
+                    onRegenerate: {
+                        if let messageID = img.message_id {
+                            model.requestImage(messageID: messageID, overrides: generationOverrides)
+                        }
+                    },
+                    onDelete: { model.deleteGeneratedImage(img) }
+                )
                 .transition(.opacity)
                 .zIndex(50)
             }
