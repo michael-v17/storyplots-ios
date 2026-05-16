@@ -13,16 +13,19 @@ struct ComposerView: View {
     @State private var sendPulse: Bool = false
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: Theme.Spacing.s2) {
+        HStack(alignment: .center, spacing: Theme.Spacing.s2) {
             TextField("Message", text: $draft, axis: .vertical)
                 .lineLimit(1...5)
                 .focused($isFocused)
                 .padding(.horizontal, Theme.Spacing.s3)
-                .padding(.vertical, Theme.Spacing.s2)
-                .background(Theme.Color.bg3, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                .padding(.vertical, Theme.Spacing.s2 + 2)
+                .background(Theme.Color.bg2, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.card)
-                        .stroke(isFocused ? accent.opacity(0.55) : Color.clear, lineWidth: 1)
+                        .strokeBorder(
+                            isFocused ? accent.opacity(0.55) : Theme.Color.borderSoft,
+                            lineWidth: 1
+                        )
                 )
                 .foregroundStyle(Theme.Color.fg)
                 .animation(Theme.Motion.snappy, value: isFocused)
@@ -42,7 +45,7 @@ struct ComposerView: View {
                 onCancel()
             } label: {
                 Image(systemName: "stop.fill")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(Theme.Color.fgOnBrand)
                     .frame(width: 36, height: 36)
                     .background(Theme.Color.destructive, in: Circle())
@@ -54,19 +57,23 @@ struct ComposerView: View {
                 onSend()
             } label: {
                 Image(systemName: "arrow.up")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Theme.Color.fgOnBrand)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(canSend ? Theme.Color.fgOnBrand : Theme.Color.fg3)
                     .frame(width: 36, height: 36)
                     .background(
-                        draft.trimmingCharacters(in: .whitespaces).isEmpty
-                            ? AnyShapeStyle(Theme.Color.bg3)
-                            : AnyShapeStyle(Theme.Color.brandGradient),
+                        canSend
+                            ? AnyShapeStyle(Theme.Color.brandGradient)
+                            : AnyShapeStyle(Theme.Color.bg3),
                         in: Circle()
                     )
                     .scaleEffect(sendPulse ? 0.85 : 1.0)
                     .animation(Theme.Motion.pop, value: sendPulse)
             }
-            .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+            .disabled(!canSend)
         }
+    }
+
+    private var canSend: Bool {
+        !draft.trimmingCharacters(in: .whitespaces).isEmpty
     }
 }

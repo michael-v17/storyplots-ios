@@ -12,6 +12,7 @@ struct ChatView: View {
     @State private var forkedConversationID: String?
     @State private var presentedImage: GeneratedImage?
     @State private var editingMessageID: String?
+    @State private var showCharacterDetail: Bool = false
     @Namespace private var imageNamespace
     private let client: SupabaseClient
 
@@ -71,34 +72,32 @@ struct ChatView: View {
         .toolbarBackgroundVisibility(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                HStack(spacing: Theme.Spacing.s2) {
-                    AvatarView(
-                        avatarRef: model.avatarRef,
-                        name: model.characterName,
-                        accent: model.accent,
-                        size: 28,
-                        ringWidth: 1.5
-                    )
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(model.characterName)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Theme.Color.fg)
-                            .lineLimit(1)
-                        if let tagline = model.character?.tagline, !tagline.isEmpty {
-                            Text(tagline)
-                                .font(.caption2)
-                                .foregroundStyle(Theme.Color.fg3)
-                                .lineLimit(1)
-                        } else if model.isStreaming {
-                            Text("typing…")
-                                .font(.caption2)
-                                .foregroundStyle(model.accent)
-                        }
-                    }
+                ChatHeaderTitle(
+                    avatarRef: model.avatarRef,
+                    characterName: model.characterName,
+                    tagline: model.character?.tagline,
+                    isStreaming: model.isStreaming,
+                    accent: model.accent
+                ) {
+                    Haptics.impact(.light)
+                    showCharacterDetail = true
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 ChatPanelsMenuButton(presented: $activePanel)
+            }
+        }
+        .sheet(isPresented: $showCharacterDetail) {
+            if let character = model.character {
+                CharacterDetailSheet(
+                    character: character,
+                    accent: model.accent,
+                    avatarRef: model.avatarRef,
+                    client: client,
+                    onClose: { showCharacterDetail = false }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
         }
         .sheet(item: Binding(
@@ -157,17 +156,36 @@ struct ChatView: View {
 
     @ViewBuilder
     private var messagesScroll: some View {
+        if isSkeletonState {
+            skeletonScroll
+        } else {
+            resolvedScroll
+        }
+    }
+
+    private var isSkeletonState: Bool {
         switch model.loadState {
-        case .idle, .loading where model.items.isEmpty:
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: Theme.Spacing.s3) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        ChatBubbleSkeleton()
-                    }
+        case .idle:    return true
+        case .loading: return model.items.isEmpty
+        default:       return false
+        }
+    }
+
+    private var skeletonScroll: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Theme.Spacing.s3) {
+                ForEach(0..<3, id: \.self) { _ in
+                    ChatBubbleSkeleton()
                 }
-                .padding(.vertical, Theme.Spacing.s3)
             }
-            .disabled(true)
+            .padding(.vertical, Theme.Spacing.s3)
+        }
+        .disabled(true)
+    }
+
+    @ViewBuilder
+    private var resolvedScroll: some View {
+        switch model.loadState {
         case .error(let m) where model.items.isEmpty:
             VStack(spacing: Theme.Spacing.s3) {
                 Image(systemName: "exclamationmark.triangle.fill")

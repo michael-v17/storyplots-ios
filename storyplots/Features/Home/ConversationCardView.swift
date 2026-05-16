@@ -6,6 +6,17 @@ struct ConversationCardView: View {
     let conversation: Conversation
     let accent: Color
     let avatarRef: String?
+    let previewText: String?
+
+    init(conversation: Conversation,
+         accent: Color,
+         avatarRef: String?,
+         previewText: String? = nil) {
+        self.conversation = conversation
+        self.accent = accent
+        self.avatarRef = avatarRef
+        self.previewText = previewText
+    }
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s3) {
@@ -26,6 +37,13 @@ struct ConversationCardView: View {
                     .font(.callout)
                     .foregroundStyle(Theme.Color.fg2)
                     .lineLimit(2)
+
+                if let previewText, !previewText.isEmpty {
+                    Text(previewText)
+                        .font(Theme.FontStyle.meta)
+                        .foregroundStyle(Theme.Color.fg3)
+                        .lineLimit(1)
+                }
             }
 
             Spacer(minLength: Theme.Spacing.s2)

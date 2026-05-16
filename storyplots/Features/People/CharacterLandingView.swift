@@ -15,6 +15,7 @@ struct CharacterLandingView: View {
     @State private var startError: String?
     @State private var newConversationID: String?
     @State private var startProgressLabel: String = "Starting…"
+    @State private var showHeroFullscreen: Bool = false
 
     var body: some View {
         ScrollView {
@@ -67,6 +68,11 @@ struct CharacterLandingView: View {
                 client: client
             )
         }
+        .fullScreenCover(isPresented: $showHeroFullscreen) {
+            AvatarFullscreenViewer(avatarRef: avatarRef) {
+                showHeroFullscreen = false
+            }
+        }
     }
 
     private struct ConversationDestination: Hashable {
@@ -75,19 +81,28 @@ struct CharacterLandingView: View {
 
     private var hero: some View {
         VStack(spacing: Theme.Spacing.s3) {
-            ZStack {
-                Circle()
-                    .fill(accent.opacity(0.18))
-                    .frame(width: 168, height: 168)
-                    .blur(radius: 18)
-                AvatarView(
-                    avatarRef: avatarRef,
-                    name: character.name,
-                    accent: accent,
-                    size: 132,
-                    ringWidth: 2.5
-                )
+            Button {
+                guard avatarRef != nil else { return }
+                Haptics.impact(.light)
+                showHeroFullscreen = true
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(accent.opacity(0.18))
+                        .frame(width: 168, height: 168)
+                        .blur(radius: 18)
+                    AvatarView(
+                        avatarRef: avatarRef,
+                        name: character.name,
+                        accent: accent,
+                        size: 132,
+                        ringWidth: 2.5
+                    )
+                }
             }
+            .buttonStyle(.plain)
+            .disabled(avatarRef == nil)
+            .accessibilityLabel("View character avatar")
             VStack(spacing: 4) {
                 Text(character.name)
                     .font(Theme.FontStyle.h2)
@@ -198,11 +213,29 @@ struct CharacterLandingView: View {
                 creating = false
                 newConversationID = conversationID
             } catch {
-                landingLog.error("create conversation failed: \(error.localizedDescription, privacy: .public)")
-                startError = "Couldn't start a conversation. Check your connection and try again."
+                let detail = error.localizedDescription
+                landingLog.error("create conversation failed: \(detail, privacy: .public)")
+                startError = Self.userFacing(error: detail)
                 creating = false
             }
         }
+    }
+
+    /// Keep retry/cold-start copy when the failure looks like a transient
+    /// network problem; otherwise surface the actual backend message so the
+    /// underlying schema/auth issue is visible instead of the generic catch.
+    private static func userFacing(error detail: String) -> String {
+        let lower = detail.lowercased()
+        if lower.contains("offline")
+            || lower.contains("network connection")
+            || lower.contains("timed out")
+            || lower.contains("could not be found") {
+            return "Couldn't start a conversation. Check your connection and try again."
+        }
+        if detail.isEmpty {
+            return "Couldn't start a conversation. Try again in a moment."
+        }
+        return detail
     }
 
     private func createConversationWithRetry(scenarioBody: String?) async throws -> String {
@@ -219,14 +252,42 @@ struct CharacterLandingView: View {
     }
 
     private func createConversation(scenarioBody: String?) async throws -> String {
+        // Conversations RLS requires user_id = auth.uid(). The backend also
+        // expects a character_snapshot per `base/frontend/src/lib/conversations.ts`
+        // — we materialize the prompt-relevant subset of the loaded character.
+        let session = try await client.auth.session
+        let userID = session.user.id.uuidString
+
+        struct CharacterSnapshotPayload: Encodable {
+            let name: String
+            let system_prompt: String?
+            let mode: String?
+            let scenario: String?
+        }
         struct ConvInsert: Encodable {
+            let user_id: String
             let character_id: String
             let title: String
+            let character_snapshot: CharacterSnapshotPayload
         }
+
+        let snapshot = CharacterSnapshotPayload(
+            name: character.name,
+            system_prompt: character.system_prompt,
+            mode: character.mode,
+            scenario: character.scenario
+        )
         let title = scenarioBody == nil ? character.name : "\(character.name) · Scenario"
+        let payload = ConvInsert(
+            user_id: userID,
+            character_id: character.id,
+            title: title,
+            character_snapshot: snapshot
+        )
+
         let inserted: [Conversation] = try await client
             .from("conversations")
-            .insert(ConvInsert(character_id: character.id, title: title))
+            .insert(payload)
             .select("id, title, character_id, character_snapshot, last_message_at, updated_at")
             .execute()
             .value
