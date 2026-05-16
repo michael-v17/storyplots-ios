@@ -7,10 +7,6 @@ struct ProfileView: View {
     let client: SupabaseClient
 
     @Environment(AuthStore.self) private var auth
-    @State private var displayName: String = ""
-    @State private var didLoad: Bool = false
-    @State private var saving: Bool = false
-    @State private var error: String?
     @State private var primaryPersona: PrimaryPersona?
     @State private var primaryPersonaLoading: Bool = true
     @State private var showAvatarFullscreen: Bool = false
@@ -46,41 +42,18 @@ struct ProfileView: View {
 
             Section {
                 NavigationLink(value: SettingsDestination.personas) {
-                    Label("Manage all personas", systemImage: "person.2.crop.square.stack")
-                        .foregroundStyle(Theme.Color.fg)
+                    brandLabel("Manage all personas", systemImage: "person.2.crop.square.stack")
                 }
             }
 
             Section("Account") {
-                LabeledContent("Email") {
+                LabeledContent {
                     Text(auth.userEmail ?? "—")
                         .foregroundStyle(Theme.Color.fg2)
-                }
-                TextField("Display name", text: $displayName)
-                    .textInputAutocapitalization(.words)
-                    .submitLabel(.done)
-                    .onSubmit { Task { await saveDisplayName() } }
-            }
-
-            if let error {
-                Section {
-                    Text(error)
-                        .font(Theme.FontStyle.meta)
-                        .foregroundStyle(Theme.Color.destructive)
-                }
-            }
-
-            Section {
-                Button {
-                    Task { await saveDisplayName() }
                 } label: {
-                    HStack {
-                        Spacer()
-                        if saving { ProgressView() } else { Text("Save changes") }
-                        Spacer()
-                    }
+                    Text("Email")
+                        .foregroundStyle(Theme.Color.fg)
                 }
-                .disabled(saving || !didLoad)
             }
 
             Section {
@@ -106,7 +79,7 @@ struct ProfileView: View {
                 showAvatarFullscreen = false
             }
         }
-        .task { await load() }
+        .task { await loadPrimaryPersona() }
     }
 
     @ViewBuilder
@@ -186,18 +159,16 @@ struct ProfileView: View {
         }
     }
 
-    private func load() async {
-        async let displayNameLoad: Void = loadDisplayName()
-        async let personaLoad: Void = loadPrimaryPersona()
-        _ = await (displayNameLoad, personaLoad)
-        didLoad = true
-    }
-
-    private func loadDisplayName() async {
-        let store = PreferenceFamilyStore(client: client, family: "profile")
-        let prefs = (try? await store.load()) ?? [:]
-        if let v = prefs["display_name"] as? String {
-            displayName = v
+    /// Matches `SettingsView.brandLabel` so the icon tints align with the rest
+    /// of the Settings tree.
+    @ViewBuilder
+    private func brandLabel(_ title: String, systemImage: String) -> some View {
+        Label {
+            Text(title)
+                .foregroundStyle(Theme.Color.fg)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(Theme.Color.brand1)
         }
     }
 
@@ -253,18 +224,5 @@ struct ProfileView: View {
         }
         if let str = value as? String { return str }
         return nil
-    }
-
-    private func saveDisplayName() async {
-        guard didLoad else { return }
-        saving = true
-        defer { saving = false }
-        do {
-            let store = PreferenceFamilyStore(client: client, family: "profile")
-            try await store.save(["display_name": displayName])
-            Haptics.notify(.success)
-        } catch {
-            self.error = error.localizedDescription
-        }
     }
 }

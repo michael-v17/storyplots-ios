@@ -228,6 +228,32 @@ final class PersonaEditViewModel {
         }
     }
 
+
+    /// Clears the persona's photo: sets `photo_ref` to NULL on the row and
+    /// best-effort removes the asset from the `avatars` bucket.
+    @discardableResult
+    func removePhoto() async -> Bool {
+        guard let personaID = existingID, let previous = photoRef, !previous.isEmpty else {
+            return false
+        }
+        saveState = .saving
+        do {
+            struct Update: Encodable { let photo_ref: String? }
+            try await client
+                .from("user_personas")
+                .update(Update(photo_ref: nil))
+                .eq("id", value: personaID)
+                .execute()
+            _ = try? await client.storage.from("avatars").remove(paths: [previous])
+            photoRef = nil
+            saveState = .saved
+            return true
+        } catch {
+            saveState = .error(error.localizedDescription)
+            return false
+        }
+    }
+
     /// Backend stores `appearance` as JSONB with sub-keys like `skin`, `eyes`,
     /// `hair`, `extras`. The iOS editor is a single multiline field, so we round-
     /// trip through `extras` (preferred), falling back to any plain string value
