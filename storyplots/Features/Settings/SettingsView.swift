@@ -51,6 +51,9 @@ struct SettingsView: View {
             }
 
             Section("Experience") {
+                NavigationLink(value: SettingsDestination.personas) {
+                    brandLabel("Personas", systemImage: "person.crop.circle.badge.plus")
+                }
                 NavigationLink(value: SettingsDestination.visualRoleplay) {
                     brandLabel("Visual roleplay", systemImage: "photo.artframe")
                 }
@@ -71,19 +74,6 @@ struct SettingsView: View {
                 }
             }
 
-            Section {
-                Button(role: .destructive) {
-                    Haptics.notify(.warning)
-                    Task { await auth.signOut() }
-                } label: {
-                    if auth.isLoading {
-                        ProgressView()
-                    } else {
-                        Text("Sign out")
-                    }
-                }
-                .disabled(auth.isLoading)
-            }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.Color.bg)
@@ -98,6 +88,7 @@ struct SettingsView: View {
             case .memoryEngine:      MemoryEngineSettingsView(client: auth.client)
             case .voice:             VoiceSettingsView(client: auth.client)
             case .profile:           ProfileView(client: auth.client)
+            case .personas:          PersonaListView(client: auth.client)
             case .privacy:           PrivacyAndDataView(client: auth.client).environment(auth)
             case .roleplay:          RoleplaySettingsView(client: auth.client)
             case .writingStyles:     WritingStylesSettingsView(client: auth.client)
@@ -175,6 +166,7 @@ struct SettingsView: View {
 
 enum SettingsDestination: Hashable {
     case profile
+    case personas
     case textEngine, imageEngine, memoryEngine, voice
     case roleplay, writingStyles, grammar, grammarDashboard
     case visualRoleplay, promptEditor, memoryUser
@@ -183,6 +175,7 @@ enum SettingsDestination: Hashable {
     var title: String {
         switch self {
         case .profile: return "Profile"
+        case .personas: return "Personas"
         case .textEngine: return "Text Engine"
         case .imageEngine: return "Image Engine"
         case .memoryEngine: return "Memory Engine"
