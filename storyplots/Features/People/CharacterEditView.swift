@@ -106,6 +106,7 @@ struct CharacterEditView: View {
                 showAvatarFullscreen = false
             }
         }
+        .task { await model.loadDeep() }
     }
 
     // MARK: - Avatar tab
@@ -148,6 +149,18 @@ struct CharacterEditView: View {
                 }
                 .disabled(model.saveState == .saving)
             }
+        }
+
+        Section {
+            TextField("Describe how the character looks", text: $model.appearanceDescription, axis: .vertical)
+                .lineLimit(3...8)
+            Toggle("Append to image prompts", isOn: $model.appendAppearanceToImagePrompts)
+        } header: {
+            Text("Appearance description")
+        } footer: {
+            Text("Used by AI avatar generation. When the toggle is on, this also gets prepended to every in-chat image prompt so the character stays visually consistent.")
+                .font(Theme.FontStyle.timestamp)
+                .foregroundStyle(Theme.Color.fg3)
         }
 
         Section {
@@ -241,6 +254,66 @@ struct CharacterEditView: View {
                 .font(Theme.FontStyle.timestamp)
                 .foregroundStyle(Theme.Color.fg3)
         }
+
+        Section {
+            DisclosureGroup {
+                deepDiveField("Core traits", placeholder: "Key personality traits that define them", text: $model.personalityCoreTraits)
+                deepDiveField("Fears & insecurities", placeholder: "What keeps them up at night", text: $model.personalityFears)
+                deepDiveField("Communication style", placeholder: "How they talk and express themselves", text: $model.personalityCommunicationStyle)
+                deepDiveField("Quirks & habits", placeholder: "Distinctive behaviors or mannerisms", text: $model.personalityQuirks)
+            } label: {
+                Label {
+                    Text("Personality").foregroundStyle(Theme.Color.fg)
+                } icon: {
+                    Image(systemName: "hand.wave").foregroundStyle(Theme.Color.brand1)
+                }
+            }
+
+            DisclosureGroup {
+                deepDiveField("Primary goal", placeholder: "The one thing they're working toward", text: $model.goalsPrimary)
+                deepDiveField("Secret desire", placeholder: "What they want but won't admit", text: $model.goalsSecretDesire)
+                deepDiveField("Fears to overcome", placeholder: "Internal obstacles they must face", text: $model.goalsFearsToOvercome)
+                deepDiveField("What they'd sacrifice", placeholder: "What they'd trade to achieve their goal", text: $model.goalsWouldSacrifice)
+            } label: {
+                Label {
+                    Text("Goals & motivations").foregroundStyle(Theme.Color.fg)
+                } icon: {
+                    Image(systemName: "target").foregroundStyle(Theme.Color.brand1)
+                }
+            }
+
+            DisclosureGroup {
+                deepDiveField("Origin / Birthplace", placeholder: "Their homeland or place of origin", text: $model.worldOrigin)
+                deepDiveField("Backstory", placeholder: "Key events that shaped them", text: $model.worldBackstory)
+                deepDiveField("World / Setting", placeholder: "The setting or universe they exist in", text: $model.worldSetting)
+                deepDiveField("Special abilities", placeholder: "Powers, skills, or unique capabilities", text: $model.worldSpecialAbilities)
+            } label: {
+                Label {
+                    Text("Worldbuilding").foregroundStyle(Theme.Color.fg)
+                } icon: {
+                    Image(systemName: "globe").foregroundStyle(Theme.Color.brand1)
+                }
+            }
+        } header: {
+            Text("Optional deep dives")
+        } footer: {
+            Text("Optional structured fields. Empty groups don't ship to the prompt — fill them in for richer roleplay or leave them blank if the system prompt already covers it.")
+                .font(Theme.FontStyle.timestamp)
+                .foregroundStyle(Theme.Color.fg3)
+        }
+    }
+
+    @ViewBuilder
+    private func deepDiveField(_ label: String, placeholder: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(Theme.FontStyle.timestamp.weight(.semibold))
+                .foregroundStyle(Theme.Color.fg2)
+            TextField(placeholder, text: text, axis: .vertical)
+                .lineLimit(2...6)
+                .foregroundStyle(Theme.Color.fg)
+        }
+        .padding(.vertical, 4)
     }
 
     // MARK: - Settings tab
@@ -265,6 +338,43 @@ struct CharacterEditView: View {
             Text("Mode")
         } footer: {
             Text("Mode is set at creation and cannot be changed.")
+                .font(Theme.FontStyle.timestamp)
+                .foregroundStyle(Theme.Color.fg3)
+        }
+
+        Section {
+            Picker(selection: $model.defaultPersonaID) {
+                Text("None · Use app default").tag(String?.none)
+                ForEach(model.availablePersonas) { persona in
+                    Text(persona.name).tag(String?.some(persona.id))
+                }
+            } label: {
+                Label {
+                    Text("Default persona").foregroundStyle(Theme.Color.fg)
+                } icon: {
+                    Image(systemName: "person.crop.circle").foregroundStyle(Theme.Color.brand1)
+                }
+            }
+        } header: {
+            Text("Default persona")
+        } footer: {
+            Text("Persona used for new conversations with this character. Manage personas in Settings → Experience → Personas.")
+                .font(Theme.FontStyle.timestamp)
+                .foregroundStyle(Theme.Color.fg3)
+        }
+
+        Section {
+            Toggle(isOn: $model.characterMemoryEnabled) {
+                Label {
+                    Text("Character memory").foregroundStyle(Theme.Color.fg)
+                } icon: {
+                    Image(systemName: "brain").foregroundStyle(Theme.Color.brand1)
+                }
+            }
+        } header: {
+            Text("Memory")
+        } footer: {
+            Text("\(model.name.isEmpty ? "This character" : model.name) remembers details across conversations — names, preferences, story events. When off, memory is limited to the current conversation.")
                 .font(Theme.FontStyle.timestamp)
                 .foregroundStyle(Theme.Color.fg3)
         }

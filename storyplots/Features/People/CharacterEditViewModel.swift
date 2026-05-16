@@ -30,6 +30,42 @@ final class CharacterEditViewModel {
     /// in the Settings tab (schema.md §2.3 says mode is immutable after creation).
     var modeRaw: String?
 
+    // Avatar tab — fields beyond avatar + accent
+    var appearanceDescription: String = ""
+    var appendAppearanceToImagePrompts: Bool = true
+
+    // Info tab — Personality / Goals / Worldbuilding jsonb sub-fields
+    // (schema.md §2.3 lays out the exact keys per sub-object).
+    var personalityCoreTraits: String = ""
+    var personalityFears: String = ""
+    var personalityCommunicationStyle: String = ""
+    var personalityQuirks: String = ""
+
+    var goalsPrimary: String = ""
+    var goalsSecretDesire: String = ""
+    var goalsFearsToOvercome: String = ""
+    var goalsWouldSacrifice: String = ""
+
+    var worldOrigin: String = ""
+    var worldBackstory: String = ""
+    var worldSetting: String = ""
+    var worldSpecialAbilities: String = ""
+
+    // Settings tab
+    var characterMemoryEnabled: Bool = true
+    var defaultPersonaID: String? = nil
+
+    /// Personas owned by the user — fetched lazily in `loadDeep` to back the
+    /// "Default persona" picker in the Settings tab.
+    var availablePersonas: [PersonaOption] = []
+
+    struct PersonaOption: Identifiable, Sendable, Equatable {
+        let id: String
+        let name: String
+    }
+
+    private(set) var deepLoaded: Bool = false
+
     init(client: SupabaseClient, character: Character? = nil) {
         self.client = client
         self.existingID = character?.id
@@ -42,6 +78,90 @@ final class CharacterEditViewModel {
         self.modeRaw = character?.mode
     }
 
+
+    /// Fetch the JSONB sub-objects (personality / goals / worldbuilding) and
+    /// the side fields that the shallow Character select skips (appearance,
+    /// memory toggle, default_persona_id, etc.). Also loads the user's
+    /// personas to back the "Default persona" picker. Idempotent.
+    func loadDeep() async {
+        guard !deepLoaded, let id = existingID else { return }
+        struct PersonalityRow: Decodable {
+            let core_traits: String?
+            let fears_insecurities: String?
+            let communication_style: String?
+            let quirks_habits: String?
+        }
+        struct GoalsRow: Decodable {
+            let primary_goal: String?
+            let secret_desire: String?
+            let fears_to_overcome: String?
+            let would_sacrifice: String?
+        }
+        struct WorldRow: Decodable {
+            let origin_birthplace: String?
+            let backstory: String?
+            let world_setting: String?
+            let special_abilities: String?
+        }
+        struct Row: Decodable {
+            let appearance_description: String?
+            let append_appearance_to_image_prompts: Bool?
+            let character_memory_enabled: Bool?
+            let default_persona_id: String?
+            let personality: PersonalityRow?
+            let goals: GoalsRow?
+            let worldbuilding: WorldRow?
+        }
+        do {
+            let rows: [Row] = try await client
+                .from("characters")
+                .select("appearance_description, append_appearance_to_image_prompts, character_memory_enabled, default_persona_id, personality, goals, worldbuilding")
+                .eq("id", value: id)
+                .limit(1)
+                .execute()
+                .value
+            if let row = rows.first {
+                appearanceDescription = row.appearance_description ?? ""
+                appendAppearanceToImagePrompts = row.append_appearance_to_image_prompts ?? true
+                characterMemoryEnabled = row.character_memory_enabled ?? true
+                defaultPersonaID = row.default_persona_id
+
+                personalityCoreTraits = row.personality?.core_traits ?? ""
+                personalityFears = row.personality?.fears_insecurities ?? ""
+                personalityCommunicationStyle = row.personality?.communication_style ?? ""
+                personalityQuirks = row.personality?.quirks_habits ?? ""
+
+                goalsPrimary = row.goals?.primary_goal ?? ""
+                goalsSecretDesire = row.goals?.secret_desire ?? ""
+                goalsFearsToOvercome = row.goals?.fears_to_overcome ?? ""
+                goalsWouldSacrifice = row.goals?.would_sacrifice ?? ""
+
+                worldOrigin = row.worldbuilding?.origin_birthplace ?? ""
+                worldBackstory = row.worldbuilding?.backstory ?? ""
+                worldSetting = row.worldbuilding?.world_setting ?? ""
+                worldSpecialAbilities = row.worldbuilding?.special_abilities ?? ""
+            }
+
+            // Personas for the Default-persona picker.
+            struct PersonaRow: Decodable {
+                let id: String
+                let name: String?
+            }
+            let personas: [PersonaRow] = (try? await client
+                .from("user_personas")
+                .select("id, name")
+                .order("created_at", ascending: true)
+                .execute()
+                .value) ?? []
+            availablePersonas = personas.map {
+                PersonaOption(id: $0.id, name: $0.name ?? "Untitled persona")
+            }
+        } catch {
+            // Soft-fail — keep defaults. Editor still works on shallow fields.
+        }
+        deepLoaded = true
+    }
+
     var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && saveState != .saving
     }
@@ -51,8 +171,60 @@ final class CharacterEditViewModel {
     func save() async -> String? {
         guard canSave else { return nil }
         saveState = .saving
+
+        // Build JSONB sub-objects only if any field is non-empty so we don't
+        // overwrite legitimate-null with a blob full of empty strings.
+        struct PersonalityPayload: Encodable {
+            let core_traits: String?
+            let fears_insecurities: String?
+            let communication_style: String?
+            let quirks_habits: String?
+        }
+        struct GoalsPayload: Encodable {
+            let primary_goal: String?
+            let secret_desire: String?
+            let fears_to_overcome: String?
+            let would_sacrifice: String?
+        }
+        struct WorldPayload: Encodable {
+            let origin_birthplace: String?
+            let backstory: String?
+            let world_setting: String?
+            let special_abilities: String?
+        }
+
+        let personality: PersonalityPayload? = {
+            let entries = [personalityCoreTraits, personalityFears, personalityCommunicationStyle, personalityQuirks]
+            guard entries.contains(where: { !$0.isEmpty }) else { return nil }
+            return PersonalityPayload(
+                core_traits:        personalityCoreTraits.isEmpty ? nil : personalityCoreTraits,
+                fears_insecurities: personalityFears.isEmpty ? nil : personalityFears,
+                communication_style: personalityCommunicationStyle.isEmpty ? nil : personalityCommunicationStyle,
+                quirks_habits:      personalityQuirks.isEmpty ? nil : personalityQuirks
+            )
+        }()
+        let goals: GoalsPayload? = {
+            let entries = [goalsPrimary, goalsSecretDesire, goalsFearsToOvercome, goalsWouldSacrifice]
+            guard entries.contains(where: { !$0.isEmpty }) else { return nil }
+            return GoalsPayload(
+                primary_goal:       goalsPrimary.isEmpty ? nil : goalsPrimary,
+                secret_desire:      goalsSecretDesire.isEmpty ? nil : goalsSecretDesire,
+                fears_to_overcome:  goalsFearsToOvercome.isEmpty ? nil : goalsFearsToOvercome,
+                would_sacrifice:    goalsWouldSacrifice.isEmpty ? nil : goalsWouldSacrifice
+            )
+        }()
+        let world: WorldPayload? = {
+            let entries = [worldOrigin, worldBackstory, worldSetting, worldSpecialAbilities]
+            guard entries.contains(where: { !$0.isEmpty }) else { return nil }
+            return WorldPayload(
+                origin_birthplace:  worldOrigin.isEmpty ? nil : worldOrigin,
+                backstory:          worldBackstory.isEmpty ? nil : worldBackstory,
+                world_setting:      worldSetting.isEmpty ? nil : worldSetting,
+                special_abilities:  worldSpecialAbilities.isEmpty ? nil : worldSpecialAbilities
+            )
+        }()
+
         do {
-            // Insert or update directly.
             if let id = existingID {
                 struct UpdatePayload: Encodable {
                     let name: String
@@ -60,13 +232,27 @@ final class CharacterEditViewModel {
                     let scenario: String?
                     let system_prompt: String
                     let accent_color: String
+                    let appearance_description: String?
+                    let append_appearance_to_image_prompts: Bool
+                    let character_memory_enabled: Bool
+                    let default_persona_id: String?
+                    let personality: PersonalityPayload?
+                    let goals: GoalsPayload?
+                    let worldbuilding: WorldPayload?
                 }
                 let payload = UpdatePayload(
                     name: name.trimmingCharacters(in: .whitespaces),
                     tagline: tagline.isEmpty ? nil : tagline,
                     scenario: scenario.isEmpty ? nil : scenario,
                     system_prompt: systemPrompt,
-                    accent_color: normalizedAccent()
+                    accent_color: normalizedAccent(),
+                    appearance_description: appearanceDescription.isEmpty ? nil : appearanceDescription,
+                    append_appearance_to_image_prompts: appendAppearanceToImagePrompts,
+                    character_memory_enabled: characterMemoryEnabled,
+                    default_persona_id: defaultPersonaID,
+                    personality: personality,
+                    goals: goals,
+                    worldbuilding: world
                 )
                 try await client
                     .from("characters")
@@ -84,8 +270,13 @@ final class CharacterEditViewModel {
                     let accent_color: String
                     let mode: String
                     let english_style: String
+                    let appearance_description: String?
                     let append_appearance_to_image_prompts: Bool
                     let character_memory_enabled: Bool
+                    let default_persona_id: String?
+                    let personality: PersonalityPayload?
+                    let goals: GoalsPayload?
+                    let worldbuilding: WorldPayload?
                 }
                 let payload = InsertPayload(
                     name: name.trimmingCharacters(in: .whitespaces),
@@ -95,13 +286,19 @@ final class CharacterEditViewModel {
                     accent_color: normalizedAccent(),
                     mode: "roleplay",
                     english_style: "neutral_american",
-                    append_appearance_to_image_prompts: false,
-                    character_memory_enabled: false
+                    appearance_description: appearanceDescription.isEmpty ? nil : appearanceDescription,
+                    append_appearance_to_image_prompts: appendAppearanceToImagePrompts,
+                    character_memory_enabled: characterMemoryEnabled,
+                    default_persona_id: defaultPersonaID,
+                    personality: personality,
+                    goals: goals,
+                    worldbuilding: world
                 )
-                let inserted: [Character] = try await client
+                struct InsertedRow: Decodable { let id: String }
+                let inserted: [InsertedRow] = try await client
                     .from("characters")
                     .insert(payload)
-                    .select("id, name, tagline, avatar_ref, accent_color, scenario, age, gender, system_prompt, mode, updated_at")
+                    .select("id")
                     .execute()
                     .value
                 saveState = .saved
