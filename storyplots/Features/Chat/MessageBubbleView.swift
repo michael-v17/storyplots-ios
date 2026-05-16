@@ -120,21 +120,29 @@ struct MessageBubbleView: View {
 
     /// Vertical icon-only rail attached to the right edge of an assistant
     /// message — matches PersonaLLM's per-message floating chips (see
-    /// base/Seed/PersonaLLM-Reference/04-screens/chat.md §C).
+    /// base/Seed/PersonaLLM-Reference/04-screens/chat.md §C):
+    /// ↻ Regenerate, ⑂ Branch (fork), 🖼 Generate image. Audio playback
+    /// moved to the long-press context menu to keep the rail to three.
     @ViewBuilder
     private var assistantActionRail: some View {
         VStack(spacing: Theme.Spacing.s2) {
+            railChip(
+                systemImage: "arrow.clockwise",
+                isActive: false,
+                action: onRegenerate,
+                accessibilityLabel: "Regenerate"
+            )
+            railChip(
+                systemImage: "arrow.triangle.branch",
+                isActive: false,
+                action: onFork,
+                accessibilityLabel: "Fork from here"
+            )
             railChip(
                 systemImage: imageRequestLoading ? "hourglass" : "photo.badge.plus",
                 isActive: imageRequestLoading,
                 action: onRequestImage,
                 accessibilityLabel: images.isEmpty ? "Generate image" : "Add image"
-            )
-            railChip(
-                systemImage: audioChipSymbol,
-                isActive: audioState == .playing,
-                action: onToggleAudio,
-                accessibilityLabel: audioAccessibilityLabel
             )
         }
     }
@@ -168,11 +176,11 @@ struct MessageBubbleView: View {
             action()
         } label: {
             Image(systemName: systemImage)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(isActive ? Theme.Color.fgOnBrand : accent)
-                .frame(width: 32, height: 32)
+                .frame(width: 40, height: 40)
                 .background(
-                    Circle().fill(accent.opacity(isActive ? 0.85 : 0.12))
+                    Circle().fill(accent.opacity(isActive ? 0.85 : 0.14))
                 )
                 .overlay(
                     Circle().stroke(accent.opacity(isActive ? 0 : 0.45), lineWidth: 1)
@@ -192,8 +200,11 @@ struct MessageBubbleView: View {
         }
         .padding(Theme.Spacing.s3)
         .background(
+            // PersonaLLM: assistant text reads directly on the dark surface
+            // with a thin accent border (no fill); user message uses the
+            // character-accent pill so identity flows through both directions.
             RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .fill(isAssistant ? AnyShapeStyle(Theme.Color.bg2) : AnyShapeStyle(accent))
+                .fill(isAssistant ? AnyShapeStyle(Color.clear) : AnyShapeStyle(accent))
         )
         .overlay(alignment: .topLeading) {
             if isAssistant, let (current, total) = variantPagination, total > 1 {
@@ -204,7 +215,7 @@ struct MessageBubbleView: View {
         }
         .overlay(
             RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .stroke(isAssistant ? accent.opacity(0.45) : Color.clear, lineWidth: 1)
+                .stroke(isAssistant ? accent.opacity(0.35) : Color.clear, lineWidth: 1)
         )
     }
 

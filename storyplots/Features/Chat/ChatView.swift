@@ -34,7 +34,7 @@ struct ChatView: View {
     var body: some View {
         mainStack
             .background(Theme.Color.bg)
-            .accentTopWash(color: model.accent, height: 280, intensity: 0.22)
+            .accentTopWash(color: model.accent, height: 340, intensity: 0.22)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .tabBar)
@@ -67,6 +67,7 @@ struct ChatView: View {
                 accent: model.accent,
                 isStreaming: model.isStreaming,
                 placeholderName: model.characterName,
+                chatPanel: $activePanel,
                 onSend: {
                     let toSend = draft
                     draft = ""
@@ -138,9 +139,6 @@ struct ChatView: View {
                 Haptics.impact(.light)
                 showCharacterDetail = true
             }
-        }
-        ToolbarItem(placement: .topBarTrailing) {
-            ChatPanelsMenuButton(presented: $activePanel)
         }
     }
 

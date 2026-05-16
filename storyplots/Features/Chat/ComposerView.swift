@@ -7,6 +7,11 @@ struct ComposerView: View {
     let accent: Color
     let isStreaming: Bool
     let placeholderName: String?
+    /// Optional binding into the chat-panels enum. When non-nil the composer
+    /// renders the `⋯` PersonaLLM-style chat-controls launcher on the left
+    /// (panels = grammar, memory, lorebook, author's note, controls, gen
+    /// overrides). When nil the left chip is omitted.
+    let chatPanel: Binding<ChatPanel?>?
     let onSend: () -> Void
     let onCancel: () -> Void
 
@@ -17,18 +22,20 @@ struct ComposerView: View {
          accent: Color,
          isStreaming: Bool,
          placeholderName: String? = nil,
+         chatPanel: Binding<ChatPanel?>? = nil,
          onSend: @escaping () -> Void,
          onCancel: @escaping () -> Void) {
         self._draft = draft
         self.accent = accent
         self.isStreaming = isStreaming
         self.placeholderName = placeholderName
+        self.chatPanel = chatPanel
         self.onSend = onSend
         self.onCancel = onCancel
     }
 
     private var placeholder: String {
-        guard let name = placeholderName?.split(separator: " ").first.map(String.init),
+        guard let name = placeholderName?.trimmingCharacters(in: .whitespaces),
               !name.isEmpty else {
             return "Message"
         }
@@ -37,6 +44,11 @@ struct ComposerView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.s2) {
+            if let chatPanel {
+                ChatPanelsMenu(presented: chatPanel, accent: accent)
+                    .frame(width: 40, height: 40)
+            }
+
             TextField(placeholder, text: $draft, axis: .vertical)
                 .lineLimit(1...5)
                 .focused($isFocused)
@@ -53,7 +65,7 @@ struct ComposerView: View {
                 .foregroundStyle(Theme.Color.fg)
                 .animation(Theme.Motion.snappy, value: isFocused)
 
-            sendButton
+            rightActionButton
         }
         .padding(.horizontal, Theme.Spacing.s3)
         .padding(.vertical, Theme.Spacing.s2)
@@ -66,7 +78,7 @@ struct ComposerView: View {
     }
 
     @ViewBuilder
-    private var sendButton: some View {
+    private var rightActionButton: some View {
         if isStreaming {
             Button {
                 Haptics.impact(.heavy)
@@ -78,7 +90,7 @@ struct ComposerView: View {
                     .frame(width: 40, height: 40)
                     .background(Theme.Color.destructive, in: Circle())
             }
-        } else {
+        } else if canSend {
             Button {
                 Haptics.impact(.medium)
                 withAnimation(Theme.Motion.pop) { sendPulse.toggle() }
@@ -86,32 +98,66 @@ struct ComposerView: View {
             } label: {
                 Image(systemName: "arrow.up")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(canSend ? Theme.Color.fgOnBrand : accent.opacity(0.55))
+                    .foregroundStyle(Theme.Color.fgOnBrand)
                     .frame(width: 40, height: 40)
                     .background(
-                        canSend
-                            ? AnyShapeStyle(
-                                LinearGradient(
-                                    colors: [accent, accent.opacity(0.7)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            : AnyShapeStyle(Theme.Color.bg3),
+                        LinearGradient(
+                            colors: [accent, accent.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
                         in: Circle()
                     )
-                    .overlay(
-                        Circle().stroke(accent.opacity(canSend ? 0 : 0.4), lineWidth: 1)
-                    )
-                    .shadow(color: canSend ? accent.opacity(0.45) : .clear, radius: 6, y: 2)
+                    .shadow(color: accent.opacity(0.45), radius: 6, y: 2)
                     .scaleEffect(sendPulse ? 0.85 : 1.0)
                     .animation(Theme.Motion.pop, value: sendPulse)
             }
-            .disabled(!canSend)
+        } else {
+            // PersonaLLM shows a mic chip in this slot — voice dictation isn't
+            // wired in iOS yet, so the icon is visually present (matches the
+            // composer rhythm) but only logs a haptic for now.
+            Button {
+                Haptics.impact(.light)
+            } label: {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(accent)
+                    .frame(width: 40, height: 40)
+                    .background(accent.opacity(0.14), in: Circle())
+                    .overlay(Circle().stroke(accent.opacity(0.4), lineWidth: 1))
+            }
+            .accessibilityLabel("Voice input")
         }
     }
 
     private var canSend: Bool {
         !draft.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+}
+
+/// PersonaLLM-style `⋯` chat-controls launcher for the composer left chip.
+/// Renders as a Menu so iOS draws its native popover, themed in accent.
+struct ChatPanelsMenu: View {
+    @Binding var presented: ChatPanel?
+    let accent: Color
+
+    var body: some View {
+        Menu {
+            ForEach(ChatPanel.allCases) { panel in
+                Button {
+                    presented = panel
+                } label: {
+                    Label(panel.title, systemImage: panel.systemImage)
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(accent)
+                .frame(width: 40, height: 40)
+                .background(accent.opacity(0.14), in: Circle())
+                .overlay(Circle().stroke(accent.opacity(0.4), lineWidth: 1))
+        }
+        .accessibilityLabel("Chat controls")
     }
 }
