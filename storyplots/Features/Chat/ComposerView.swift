@@ -19,7 +19,7 @@ struct ComposerView: View {
                 .focused($isFocused)
                 .padding(.horizontal, Theme.Spacing.s3)
                 .padding(.vertical, Theme.Spacing.s2 + 2)
-                .background(Theme.Color.bg2, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
+                .background(Theme.Color.bg3, in: RoundedRectangle(cornerRadius: Theme.Radius.card))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.card)
                         .strokeBorder(
@@ -35,6 +35,14 @@ struct ComposerView: View {
         .padding(.horizontal, Theme.Spacing.s3)
         .padding(.vertical, Theme.Spacing.s2)
         .background(.thinMaterial)
+        // Thin hairline above the composer lifts it off the messages — gives
+        // the bar a clear "this is a separate surface" boundary the same way
+        // iMessage does with its toolbar.
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Theme.Color.borderSoft.opacity(0.45))
+                .frame(height: 0.5)
+        }
     }
 
     @ViewBuilder
@@ -57,7 +65,7 @@ struct ComposerView: View {
                 onSend()
             } label: {
                 Image(systemName: "arrow.up")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(canSend ? Theme.Color.fgOnBrand : Theme.Color.fg3)
                     .frame(width: 36, height: 36)
                     .background(

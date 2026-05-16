@@ -18,23 +18,28 @@ struct ChatHeaderTitle: View {
                     avatarRef: avatarRef,
                     name: characterName,
                     accent: accent,
-                    size: 28,
+                    size: 32,
                     ringWidth: 1.5
                 )
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(characterName)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.Color.fg)
-                        .lineLimit(1)
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        Text(characterName)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(Theme.Color.fg)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Theme.Color.fg3)
+                    }
                     if isStreaming {
                         Text("typing…")
-                            .font(.caption2)
+                            .font(Theme.FontStyle.timestamp)
                             .foregroundStyle(accent)
                             .lineLimit(1)
                     } else if let tagline, !tagline.isEmpty {
                         Text(tagline)
-                            .font(.caption2)
-                            .foregroundStyle(Theme.Color.fg3)
+                            .font(Theme.FontStyle.timestamp)
+                            .foregroundStyle(Theme.Color.fg2)
                             .lineLimit(1)
                     }
                 }
