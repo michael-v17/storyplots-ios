@@ -8,7 +8,17 @@ struct HomeView: View {
     @State private var showGenerateSheet: Bool = false
     @State private var showGrammarDashboard: Bool = false
     @State private var navigateTo: Character?
+    @State private var openChat: ChatJump?
     @State private var searchText: String = ""
+
+    /// Carries the bits ChatView needs when the user shortcuts into a
+    /// conversation from the Recent strip instead of going through the
+    /// landing card.
+    struct ChatJump: Identifiable, Hashable {
+        let character: Character
+        let conversationID: String
+        var id: String { conversationID }
+    }
 
     @SceneStorage("home.layoutMode") private var layoutModeRaw: String = HomeLayoutMode.grid.rawValue
     @Namespace private var transitionNamespace
@@ -87,6 +97,15 @@ struct HomeView: View {
                 onChanged: { Task { await model.load() } }
             )
         }
+        .navigationDestination(item: $openChat) { jump in
+            ChatView(
+                conversationID: jump.conversationID,
+                character: jump.character,
+                accent: model.accent(for: jump.character),
+                avatarRef: model.avatarRef(for: jump.character),
+                client: client
+            )
+        }
     }
 
     private var contentState: some View {
@@ -108,7 +127,16 @@ struct HomeView: View {
                         characters: model.characters,
                         accentResolver: { model.accent(for: $0) },
                         avatarRefResolver: { model.avatarRef(for: $0) },
-                        onTap: { character in navigateTo = character }
+                        onTap: { character in
+                            // Recent strip is a "jump back into the most recent
+                            // chat" shortcut — fall back to the landing card
+                            // only when the character has no conversation yet.
+                            if let convID = model.mostRecentConversationID(forCharacterID: character.id) {
+                                openChat = ChatJump(character: character, conversationID: convID)
+                            } else {
+                                navigateTo = character
+                            }
+                        }
                     )
 
                     GrammarWidget(

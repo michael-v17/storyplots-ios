@@ -26,11 +26,21 @@ struct ImageViewer: View {
 
     var body: some View {
         ZStack {
-            // ultraThickMaterial scrim per design.md §6.5
-            Rectangle()
-                .fill(Theme.Material.viewerOverlay)
-                .ignoresSafeArea()
-                .onTapGesture { dismiss() }
+            // Bottom-ascending scrim: clear at the very top (so the host
+            // chat's nav glass keeps reading through) and progressively
+            // darker toward the bottom where the prompt + action bar live.
+            LinearGradient(
+                stops: [
+                    .init(color: Color.clear,                        location: 0.0),
+                    .init(color: Theme.Color.bg.opacity(0.55),       location: 0.32),
+                    .init(color: Theme.Color.bg.opacity(0.92),       location: 0.72),
+                    .init(color: Theme.Color.bg.opacity(0.96),       location: 1.0)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .onTapGesture { dismiss() }
 
             content
                 .matchedGeometryEffect(id: "img-\(image.id)", in: namespace)

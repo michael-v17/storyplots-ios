@@ -21,6 +21,22 @@ final class HomeViewModel {
     private(set) var persona: UserPersona?
     /// `nil` until the first load attempts a fetch — used by the Grammar widget
     /// to render either "—" (no data yet) or a percent.
+    /// Map of character_id → most recent conversation we have for that
+    /// character. Backs both the YOUR CAST activity sort and the Recent
+    /// strip's tap-into-chat shortcut.
+    private(set) var latestConversationByCharacter: [String: LatestConversation] = [:]
+
+    struct LatestConversation: Sendable, Equatable {
+        let id: String
+        let lastActivityISO: String?
+    }
+
+    /// Convenience for HomeView: returns the conversation id to jump into
+    /// when the user taps the character's avatar in the Recent strip.
+    func mostRecentConversationID(forCharacterID id: String) -> String? {
+        latestConversationByCharacter[id]?.id
+    }
+
     private(set) var grammarAccuracy: Double?
     /// User preference for the grammar "master" toggle (from `users.preferences.grammar.master`).
     private(set) var grammarMasterEnabled: Bool = false
@@ -46,12 +62,14 @@ final class HomeViewModel {
         loadState = .loading
         do {
             async let charactersTask = fetchCharacters()
+            async let conversationsTask = fetchLatestConversationsByCharacter()
             async let personaTask = fetchPersona()
             async let grammarTask = fetchGrammar()
             async let prefsTask = fetchGrammarPref()
 
-            let (chars, pers, accuracy, masterOn) = try await (charactersTask, personaTask, grammarTask, prefsTask)
-            self.characters = chars
+            let (chars, latest, pers, accuracy, masterOn) = try await (charactersTask, conversationsTask, personaTask, grammarTask, prefsTask)
+            self.latestConversationByCharacter = latest
+            self.characters = Self.sortByActivity(chars, activity: latest)
             self.persona = pers
             self.grammarAccuracy = accuracy
             self.grammarMasterEnabled = masterOn
@@ -90,6 +108,50 @@ final class HomeViewModel {
             .order("updated_at", ascending: false)
             .execute()
             .value
+    }
+
+
+    /// Fetch the most-recent conversation per character so YOUR CAST can sort
+    /// by activity and the Recent strip can shortcut straight into that chat.
+    private func fetchLatestConversationsByCharacter() async throws -> [String: LatestConversation] {
+        struct Row: Decodable {
+            let id: String
+            let character_id: String?
+            let last_message_at: String?
+            let updated_at: String?
+        }
+        let rows: [Row] = try await client
+            .from("conversations")
+            .select("id, character_id, last_message_at, updated_at")
+            .order("last_message_at", ascending: false)
+            .order("updated_at", ascending: false)
+            .execute()
+            .value
+        var byCharacter: [String: LatestConversation] = [:]
+        for row in rows {
+            guard let cid = row.character_id, byCharacter[cid] == nil else { continue }
+            let stamp = row.last_message_at ?? row.updated_at
+            byCharacter[cid] = LatestConversation(id: row.id, lastActivityISO: stamp)
+        }
+        return byCharacter
+    }
+
+    /// Sort characters so the most-recently-active ones lead YOUR CAST, falling
+    /// back to character.updated_at when no conversation exists yet.
+    private static func sortByActivity(
+        _ characters: [Character],
+        activity: [String: LatestConversation]
+    ) -> [Character] {
+        characters.sorted { lhs, rhs in
+            let lhsActivity = activity[lhs.id]?.lastActivityISO ?? ""
+            let rhsActivity = activity[rhs.id]?.lastActivityISO ?? ""
+            if lhsActivity != rhsActivity {
+                return lhsActivity > rhsActivity
+            }
+            let lhsUpdated = lhs.updated_at ?? ""
+            let rhsUpdated = rhs.updated_at ?? ""
+            return lhsUpdated > rhsUpdated
+        }
     }
 
     private func fetchPersona() async throws -> UserPersona? {
