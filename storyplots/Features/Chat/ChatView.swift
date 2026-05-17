@@ -136,25 +136,29 @@ struct ChatView: View {
         // pill and makes content behind it recede.
         ZStack(alignment: .bottom) {
             messagesScroll
-            // Dark scrim: clear at the top, deepens to nearly solid bg
-            // right where the composer card sits. Aggressive bottom-half
-            // makes the composer's frosted glass the visual focus and
-            // lets behind-the-composer content recede to a barely-there
-            // hint — Claude's chat-input treatment.
+            // Dark scrim — Claude's pattern. Top third is a soft fade from
+            // clear so content above the composer area transitions into
+            // shadow as it scrolls down; the bottom two thirds are solid
+            // `bg` so anything behind, around, or below the composer pill
+            // is fully obscured. The composer's frosted glass then sits
+            // over the solid portion, so what reads through it is bg plus
+            // the material's own highlights, not actual chat text.
             LinearGradient(
-                colors: [
-                    Color.clear,
-                    Theme.Color.bg.opacity(0.45),
-                    Theme.Color.bg.opacity(0.88),
-                    Theme.Color.bg
+                stops: [
+                    .init(color: Color.clear, location: 0.0),
+                    .init(color: Theme.Color.bg.opacity(0.55), location: 0.18),
+                    .init(color: Theme.Color.bg.opacity(0.92), location: 0.34),
+                    .init(color: Theme.Color.bg, location: 0.45),
+                    .init(color: Theme.Color.bg, location: 1.0)
                 ],
                 startPoint: .top,
                 endPoint: .bottom
             )
-            .frame(height: 260)
+            .frame(height: 340)
             .frame(maxWidth: .infinity, alignment: .bottom)
             .allowsHitTesting(false)
             .frame(maxHeight: .infinity, alignment: .bottom)
+            .ignoresSafeArea(edges: .bottom)
             VStack(spacing: 0) {
                 noticeStrip
                 errorStrip
