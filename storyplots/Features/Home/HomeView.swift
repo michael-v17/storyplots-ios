@@ -10,6 +10,10 @@ struct HomeView: View {
     @State private var navigateTo: Character?
     @State private var openChat: ChatJump?
     @State private var searchText: String = ""
+    /// True once the user has scrolled past the inline wordmark hero —
+    /// gates the small wordmark in the toolbar's principal slot so it
+    /// fades in only when the big version has scrolled out of view.
+    @State private var navWordmarkVisible: Bool = false
 
     /// Carries the bits ChatView needs when the user shortcuts into a
     /// conversation from the Recent strip instead of going through the
@@ -68,6 +72,8 @@ struct HomeView: View {
                     .scaledToFit()
                     .frame(maxHeight: 22)
                     .accessibilityLabel("StoryPlots")
+                    .opacity(navWordmarkVisible ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.2), value: navWordmarkVisible)
             }
         }
         .searchable(text: $searchText, prompt: "Search characters")
@@ -124,6 +130,7 @@ struct HomeView: View {
     private var contentState: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
+                wordmarkHeader
                 HomeHeaderView(
                     personaName: model.persona?.name,
                     personaPhotoRef: model.persona?.photo_ref,
@@ -165,11 +172,34 @@ struct HomeView: View {
             .padding(.top, Theme.Spacing.s3)
             .padding(.bottom, 100)
         }
+        .onScrollGeometryChange(for: Double.self) { geometry in
+            geometry.contentOffset.y
+        } action: { _, newValue in
+            // Fade the toolbar wordmark in once the hero version has
+            // scrolled past — same large-to-small handoff Twitter and
+            // Apple Music use.
+            navWordmarkVisible = newValue > 40
+        }
     }
 
-    // wordmarkHeader removed — the StoryPlots wordmark now lives in the
-    // toolbar's principal slot so it stays anchored at the top regardless
-    // of scroll position. See `.toolbar` in `body`.
+    /// Large StoryPlots wordmark at the top of the scroll content. The
+    /// same image also lives in `ToolbarItem(.principal)` at a smaller
+    /// size with opacity tied to `navWordmarkVisible`; when the user
+    /// scrolls past this hero the toolbar version fades in to take its
+    /// place. Apple Music / Twitter "large-to-small title" handoff.
+    private var wordmarkHeader: some View {
+        HStack {
+            Spacer(minLength: 0)
+            Image("Wordmark")
+                .resizable()
+                .scaledToFit()
+                .frame(maxHeight: 56)
+                .accessibilityLabel("StoryPlots")
+            Spacer(minLength: 0)
+        }
+        .padding(.top, Theme.Spacing.s3)
+        .padding(.bottom, Theme.Spacing.s2)
+    }
 
     private var castSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
@@ -352,6 +382,7 @@ struct HomeView: View {
     private var loadingState: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.s4) {
+                wordmarkHeader
                 HomeHeaderView(
                     personaName: nil,
                     personaPhotoRef: nil,

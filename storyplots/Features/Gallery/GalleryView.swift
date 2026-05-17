@@ -5,6 +5,7 @@ struct GalleryView: View {
     @State private var model: GalleryViewModel
     @State private var presentedImage: GeneratedImage?
     @State private var pendingDelete: GeneratedImage?
+    @State private var navTitleVisible: Bool = false
     @Namespace private var galleryNamespace
 
     init(client: SupabaseClient) {
@@ -32,11 +33,21 @@ struct GalleryView: View {
         .background(Theme.Color.bg)
         .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+        // Toolbar transparent at scroll-zero; system glass fades in once
+        // tiles scroll behind. "Gallery" title hands off from the inline
+        // hero header to the toolbar principal — same pattern as Home.
+        .toolbarBackground(.automatic, for: .navigationBar)
         .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 SidebarToggleButton()
+            }
+            ToolbarItem(placement: .principal) {
+                Text("Gallery")
+                    .font(.headline)
+                    .foregroundStyle(Theme.Color.fg)
+                    .opacity(navTitleVisible ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.2), value: navTitleVisible)
             }
         }
         .refreshable { await model.load() }
@@ -74,6 +85,7 @@ struct GalleryView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
                 header
+                    .id("gallery-hero")
                 if model.images.isEmpty {
                     EmptyStateView(
                         systemImage: "photo.stack.fill",
@@ -105,6 +117,11 @@ struct GalleryView: View {
                     .padding(.bottom, Theme.Spacing.s10)
                 }
             }
+        }
+        .onScrollGeometryChange(for: Double.self) { geometry in
+            geometry.contentOffset.y
+        } action: { _, newValue in
+            navTitleVisible = newValue > 40
         }
     }
 

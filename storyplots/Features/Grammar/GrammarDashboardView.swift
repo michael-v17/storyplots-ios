@@ -3,6 +3,7 @@ import Supabase
 
 struct GrammarDashboardView: View {
     @State private var model: GrammarDashboardViewModel
+    @State private var navTitleVisible: Bool = false
 
     init(client: SupabaseClient) {
         _model = State(initialValue: GrammarDashboardViewModel(client: client))
@@ -11,6 +12,9 @@ struct GrammarDashboardView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
+                Text("Grammar")
+                    .font(Theme.FontStyle.h2)
+                    .foregroundStyle(Theme.Color.fg)
                 accuracySection
                 categoriesSection
                 correctionsSection
@@ -22,10 +26,24 @@ struct GrammarDashboardView: View {
         }
         .background(Theme.Color.bg)
         .brandTopWash()
-        .navigationTitle("Grammar")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
-        .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+        .toolbarBackground(.automatic, for: .navigationBar)
+        .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Grammar")
+                    .font(.headline)
+                    .foregroundStyle(Theme.Color.fg)
+                    .opacity(navTitleVisible ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.2), value: navTitleVisible)
+            }
+        }
+        .onScrollGeometryChange(for: Double.self) { geometry in
+            geometry.contentOffset.y
+        } action: { _, newValue in
+            navTitleVisible = newValue > 30
+        }
         .refreshable { await model.load() }
         .task { if model.loadState == .idle { await model.load() } }
     }

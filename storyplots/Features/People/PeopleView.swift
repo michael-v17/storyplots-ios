@@ -6,6 +6,7 @@ struct PeopleView: View {
     @State private var showCreateSheet: Bool = false
     @State private var showGenerateSheet: Bool = false
     @State private var filter: PeopleFilter = .all
+    @State private var navTitleVisible: Bool = false
     @Namespace private var transitionNamespace
     private let client: SupabaseClient
 
@@ -35,11 +36,18 @@ struct PeopleView: View {
         .background(Theme.Color.bg)
         .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+        .toolbarBackground(.automatic, for: .navigationBar)
         .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 SidebarToggleButton()
+            }
+            ToolbarItem(placement: .principal) {
+                Text("Characters")
+                    .font(.headline)
+                    .foregroundStyle(Theme.Color.fg)
+                    .opacity(navTitleVisible ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.2), value: navTitleVisible)
             }
         }
         .searchable(text: Binding(
@@ -123,6 +131,11 @@ struct PeopleView: View {
                     .padding(.bottom, 100)
                 }
             }
+        }
+        .onScrollGeometryChange(for: Double.self) { geometry in
+            geometry.contentOffset.y
+        } action: { _, newValue in
+            navTitleVisible = newValue > 40
         }
     }
 
