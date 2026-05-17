@@ -220,7 +220,11 @@ struct MessageBubbleView: View {
 
     private var bubble: some View {
         let isAssistant = item.role == .assistant
-        let showDots = isAssistant && item.body.isEmpty
+        // Only animate dots for a placeholder we're actively streaming
+        // into. Persisted empty assistant rows (left over when the backend
+        // inserted the message but the provider returned empty content)
+        // would otherwise pulse forever as if a reply were on its way.
+        let showDots = isAssistant && item.body.isEmpty && isLive
         return VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
             if showDots {
                 TypingDotsView(accent: accent)
