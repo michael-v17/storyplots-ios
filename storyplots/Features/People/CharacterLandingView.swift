@@ -16,6 +16,7 @@ struct CharacterLandingView: View {
     @State private var newConversationID: String?
     @State private var startProgressLabel: String = "Starting…"
     @State private var showHeroFullscreen: Bool = false
+    @State private var showConversationsList: Bool = false
 
     var body: some View {
         ScrollView {
@@ -46,6 +47,17 @@ struct CharacterLandingView: View {
         .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Haptics.impact(.light)
+                    showConversationsList = true
+                } label: {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(accent)
+                }
+                .accessibilityLabel("Conversations with \(character.name)")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
                     CharacterEditView(
                         client: client,
@@ -74,6 +86,18 @@ struct CharacterLandingView: View {
             AvatarFullscreenViewer(avatarRef: avatarRef) {
                 showHeroFullscreen = false
             }
+        }
+        .sheet(isPresented: $showConversationsList) {
+            NavigationStack {
+                CharacterLandingChatsLoader(
+                    character: character,
+                    accent: accent,
+                    avatarRef: avatarRef,
+                    client: client,
+                    onDismiss: { showConversationsList = false }
+                )
+            }
+            .presentationDetents([.large])
         }
     }
 
@@ -336,6 +360,94 @@ struct CharacterLandingView: View {
             return rows.first?.id
         } catch {
             return nil
+        }
+    }
+}
+
+
+/// Sheet body opened from the conversations-list trailing toolbar item.
+/// Fetches every conversation the user has with this character and renders
+/// the existing `CharacterChatsView` once they land. Mirrors
+/// `CharacterChatsLoader` in `ChatView.swift` but pulls directly via the
+/// Supabase client (no ChatViewModel handy in this surface).
+struct CharacterLandingChatsLoader: View {
+    let character: Character
+    let accent: Color
+    let avatarRef: String?
+    let client: SupabaseClient
+    let onDismiss: () -> Void
+
+    @State private var conversations: [Conversation] = []
+    @State private var loadingError: String?
+    @State private var didLoad: Bool = false
+
+    var body: some View {
+        Group {
+            if !didLoad {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(accent)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Theme.Color.bg)
+            } else if let loadingError {
+                VStack(spacing: Theme.Spacing.s3) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 32))
+                        .foregroundStyle(Theme.Color.destructive)
+                    Text(loadingError)
+                        .font(Theme.FontStyle.meta)
+                        .foregroundStyle(Theme.Color.fg2)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Theme.Spacing.s4)
+                    Button("Retry") { Task { await load() } }
+                        .buttonStyle(.borderedProminent)
+                        .tint(accent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.Color.bg)
+            } else {
+                CharacterChatsView(
+                    character: character,
+                    conversations: conversations,
+                    accent: accent,
+                    avatarRef: avatarRef,
+                    client: client
+                )
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    Haptics.impact(.light)
+                    onDismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(accent)
+                }
+                .accessibilityLabel("Close")
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        loadingError = nil
+        do {
+            let session = try await client.auth.session
+            let rows: [Conversation] = try await client
+                .from("conversations")
+                .select("id, title, character_id, character_snapshot, last_message_at, updated_at")
+                .eq("user_id", value: session.user.id.uuidString)
+                .eq("character_id", value: character.id)
+                .order("updated_at", ascending: false)
+                .execute()
+                .value
+            conversations = rows
+            didLoad = true
+        } catch {
+            loadingError = error.localizedDescription
+            didLoad = true
         }
     }
 }
