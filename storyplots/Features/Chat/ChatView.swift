@@ -99,6 +99,19 @@ struct ChatView: View {
         let id: String
     }
 
+    /// True when we should render the standalone `TypingIndicatorView`
+    /// below the message list: a stream is in flight AND no assistant
+    /// placeholder has arrived yet (gap between send and the `start`
+    /// event — i.e. the cold-start window). Once the `start` event lands
+    /// the empty placeholder bubble itself shows the dots via
+    /// `MessageBubbleView`, so the standalone indicator hides to avoid
+    /// duplicating the affordance.
+    private var showTypingIndicator: Bool {
+        guard model.isStreaming else { return false }
+        guard let last = model.items.last else { return true }
+        return last.role == .user
+    }
+
     private func startSiblingConversation() {
         guard !creatingSibling else { return }
         creatingSibling = true
@@ -297,6 +310,15 @@ struct ChatView: View {
                                 .id(item.id)
                             }
                         }
+                        if showTypingIndicator {
+                            TypingIndicatorView(
+                                accent: model.accent,
+                                characterName: model.characterName,
+                                avatarRef: model.avatarRef
+                            )
+                            .id("typing-indicator")
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        }
                         if model.items.isEmpty {
                             emptyState
                         }
@@ -307,6 +329,13 @@ struct ChatView: View {
                     if let last = model.items.last {
                         withAnimation(Theme.Motion.snappy) {
                             proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    }
+                }
+                .onChange(of: showTypingIndicator) { _, isShowing in
+                    if isShowing {
+                        withAnimation(Theme.Motion.snappy) {
+                            proxy.scrollTo("typing-indicator", anchor: .bottom)
                         }
                     }
                 }

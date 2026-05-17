@@ -203,14 +203,21 @@ struct MessageBubbleView: View {
 
     private var bubble: some View {
         let isAssistant = item.role == .assistant
+        let showDots = isAssistant && item.body.isEmpty
         return VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
-            renderedBody
-                .font(.body)
-                // White on every bubble — user pill reads cleaner with white
-                // than the default black `fgOnBrand` on saturated accents
-                // (orange, teal, sky), and the assistant already uses fg.
-                .foregroundStyle(Theme.Color.fg)
-                .frame(maxWidth: bubbleMaxWidth, alignment: .leading)
+            if showDots {
+                TypingDotsView(accent: accent)
+                    .frame(maxWidth: bubbleMaxWidth, alignment: .leading)
+            } else {
+                renderedBody
+                    .font(.body)
+                    // White on every bubble — user pill reads cleaner with
+                    // white than the default black `fgOnBrand` on saturated
+                    // accents (orange, teal, sky), and the assistant already
+                    // uses fg.
+                    .foregroundStyle(Theme.Color.fg)
+                    .frame(maxWidth: bubbleMaxWidth, alignment: .leading)
+            }
         }
         .padding(Theme.Spacing.s3)
         .background(
