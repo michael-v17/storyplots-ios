@@ -294,6 +294,8 @@ struct ChatView: View {
                                     images: model.images(for: item.id),
                                     imageRequestLoading: model.imageRequestState[item.id] == .loading,
                                     audioState: model.audioState(for: item.id),
+                                    isLive: model.isStreaming && item.id == model.items.last?.id && item.role == .assistant,
+                                    grammarCorrection: item.role == .user ? model.correction(for: item.id) : nil,
                                     imageNamespace: imageNamespace,
                                     onCopy: { UIPasteboard.general.string = item.body },
                                     onRegenerate: { model.regenerate(messageID: item.id) },

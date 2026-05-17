@@ -16,6 +16,16 @@ struct MessageBubbleView: View {
     let imageRequestLoading: Bool
     /// TTS audio state for this message (idle/loading/playing/paused/error).
     let audioState: MessageAudioState
+    /// True when this assistant message is still being streamed in (last
+    /// item + isStreaming). Suppresses the action rail until the message
+    /// is complete — regenerate/fork/image only make sense on a finished
+    /// reply, and the chips floating over a live-typing bubble look noisy.
+    let isLive: Bool
+    /// Inline grammar correction for this user message, when one exists
+    /// in `grammar_corrections` for this conversation. Renders as a
+    /// tappable strip below the user pill; nil for assistant rows or
+    /// when the agent flagged the message as already correct.
+    let grammarCorrection: GrammarCorrection?
     /// Namespace for `matchedGeometryEffect("img-<id>")` shared with `ImageViewer`.
     let imageNamespace: Namespace.ID
     let onCopy: () -> Void
@@ -53,12 +63,19 @@ struct MessageBubbleView: View {
                         timestampLabel
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    assistantActionRail
-                        .padding(.top, 2)
+                    if !isLive {
+                        assistantActionRail
+                            .padding(.top, 2)
+                            .transition(.opacity)
+                    }
                 } else {
                     Spacer(minLength: Theme.Spacing.s6)
                     VStack(alignment: .trailing, spacing: Theme.Spacing.s1) {
                         bubble
+                        if let grammarCorrection {
+                            GrammarInlineView(correction: grammarCorrection, accent: accent)
+                                .transition(.opacity)
+                        }
                         timestampLabel
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)

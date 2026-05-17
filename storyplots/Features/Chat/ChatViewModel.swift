@@ -40,6 +40,11 @@ final class ChatViewModel {
     private(set) var imageRequestState: [String: ImageRequestState] = [:]
     /// Per-message TTS audio state — keyed by message id.
     private(set) var audioStateByMessage: [String: MessageAudioState] = [:]
+    /// Grammar corrections keyed by `user_message_id`. Populated from the
+    /// SSE `correction` / `rewrite_required` events and from a one-shot
+    /// fetch of `grammar_corrections` on chat load — backs the inline
+    /// grammar render under user bubbles.
+    private(set) var corrections: [String: GrammarCorrection] = [:]
     /// Cached audio bytes by message id, so play/pause/resume doesn't re-fetch.
     private var audioCache: [String: Data] = [:]
     /// Content-type of the cached audio, used to pick the right temp file ext.
@@ -124,6 +129,10 @@ final class ChatViewModel {
 
             // Generated images attached to assistant messages in this conversation.
             await loadImages()
+
+            // Persisted grammar corrections — backs the inline render under
+            // user bubbles on a fresh chat open.
+            await loadGrammarCorrections()
 
             self.loadState = .loaded
         } catch {
@@ -608,11 +617,12 @@ final class ChatViewModel {
                             createdAt: items[idx].createdAt
                         )
                     }
-                case .correction:
-                    chatLog.info("correction received")
-                    transientNotice = "Grammar correction received."
-                case .rewriteRequired:
-                    chatLog.info("rewrite required")
+                case let .correction(payload):
+                    chatLog.info("correction received user_msg=\(payload.user_message_id ?? "?", privacy: .public) already_correct=\(payload.already_correct ?? false, privacy: .public)")
+                    storeCorrection(payload)
+                case let .rewriteRequired(payload):
+                    chatLog.info("rewrite required user_msg=\(payload.user_message_id ?? "?", privacy: .public)")
+                    storeCorrection(payload)
                     transientNotice = "Rewrite required by grammar settings."
                 case let .grammarError(message):
                     chatLog.info("grammar error: \(message, privacy: .public)")
@@ -639,6 +649,65 @@ final class ChatViewModel {
             chatLog.error("stream threw: \(error.localizedDescription, privacy: .public)")
             streamState = .error(error.localizedDescription)
         }
+    }
+
+    // MARK: - Grammar corrections (inline render)
+
+    /// Convert an SSE `correction` / `rewrite_required` payload into a
+    /// `GrammarCorrection` row keyed by user_message_id, and merge it into
+    /// `corrections`. Skipped when the payload is for an `already_correct`
+    /// message (no diff to render) or missing a user_message_id.
+    private func storeCorrection(_ payload: CorrectionPayload) {
+        guard let userMsgID = payload.user_message_id,
+              let original = payload.original_text,
+              let corrected = payload.corrected_text,
+              payload.already_correct != true,
+              original.trimmingCharacters(in: .whitespacesAndNewlines)
+                != corrected.trimmingCharacters(in: .whitespacesAndNewlines)
+        else { return }
+        corrections[userMsgID] = GrammarCorrection(
+            id: userMsgID,
+            conversation_id: conversationID,
+            user_message_id: userMsgID,
+            original_text: original,
+            corrected_text: corrected,
+            explanation: payload.explanation,
+            error_categories: payload.error_categories,
+            edit_distance: nil,
+            created_at: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    /// Backfill `corrections` from the persisted `grammar_corrections`
+    /// table on chat open, so reloading a conversation re-renders the
+    /// inline corrections that were applied in past turns.
+    func loadGrammarCorrections() async {
+        do {
+            let rows: [GrammarCorrection] = try await client
+                .from("grammar_corrections")
+                .select("id, conversation_id, user_message_id, original_text, corrected_text, explanation, error_categories, edit_distance, created_at")
+                .eq("conversation_id", value: conversationID)
+                .execute()
+                .value
+            var byID: [String: GrammarCorrection] = [:]
+            for row in rows {
+                guard let userMsgID = row.user_message_id,
+                      let original = row.original_text,
+                      let corrected = row.corrected_text,
+                      original.trimmingCharacters(in: .whitespacesAndNewlines)
+                        != corrected.trimmingCharacters(in: .whitespacesAndNewlines)
+                else { continue }
+                byID[userMsgID] = row
+            }
+            self.corrections = byID
+        } catch {
+            chatLog.info("grammar_corrections fetch failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Read accessor for the bubble view.
+    func correction(for userMessageID: String) -> GrammarCorrection? {
+        corrections[userMessageID]
     }
 
     // MARK: - Sibling conversation
