@@ -67,20 +67,22 @@ struct HomeView: View {
                 SidebarToggleButton()
             }
             ToolbarItem(placement: .principal) {
+                // iOS 26 centers `principal` between the last leading and
+                // trailing items, not between screen edges — so with only
+                // a leading hamburger the wordmark drifts right. We can't
+                // add a trailing counterweight (iOS wraps every toolbar
+                // item in an automatic glass capsule, which renders as a
+                // visibly empty pill on the right). Instead, compensate
+                // by offsetting the wordmark left by roughly half the
+                // hamburger's footprint to land on the true screen center.
                 Image("Wordmark")
                     .resizable()
                     .scaledToFit()
                     .frame(maxHeight: 22)
                     .accessibilityLabel("StoryPlots")
+                    .offset(x: -28)
                     .opacity(navWordmarkVisible ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.2), value: navWordmarkVisible)
-            }
-            // Invisible counterweight so the `principal` slot centers
-            // against the screen instead of being pushed right by the
-            // unbalanced leading hamburger. Matches the SidebarToggle's
-            // 36×36 frame so the math comes out symmetric.
-            ToolbarItem(placement: .topBarTrailing) {
-                Color.clear.frame(width: 36, height: 36)
             }
         }
         .searchable(text: $searchText, prompt: "Search characters")

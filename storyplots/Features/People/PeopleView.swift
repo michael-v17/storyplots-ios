@@ -43,14 +43,13 @@ struct PeopleView: View {
                 SidebarToggleButton()
             }
             ToolbarItem(placement: .principal) {
+                // See HomeView for why we offset rather than counterweight.
                 Text("Characters")
                     .font(.headline)
                     .foregroundStyle(Theme.Color.fg)
+                    .offset(x: -28)
                     .opacity(navTitleVisible ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.2), value: navTitleVisible)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Color.clear.frame(width: 36, height: 36)
             }
         }
         .searchable(text: Binding(
