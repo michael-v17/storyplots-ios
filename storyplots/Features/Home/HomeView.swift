@@ -50,11 +50,24 @@ struct HomeView: View {
         .background(Theme.Color.bg)
         .brandTopWash()
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+        // `.automatic` toolbar background lets iOS render the nav bar
+        // clear when the user is at scroll-zero and fade in the glass
+        // material only when content scrolls behind it. The wordmark
+        // sits in the principal slot so it stays anchored regardless
+        // of scroll — matches the Claude pattern where the title is
+        // always present and the bar fades in beneath it.
+        .toolbarBackground(.automatic, for: .navigationBar)
         .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 SidebarToggleButton()
+            }
+            ToolbarItem(placement: .principal) {
+                Image("Wordmark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 22)
+                    .accessibilityLabel("StoryPlots")
             }
         }
         .searchable(text: $searchText, prompt: "Search characters")
@@ -111,7 +124,6 @@ struct HomeView: View {
     private var contentState: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
-                wordmarkHeader
                 HomeHeaderView(
                     personaName: model.persona?.name,
                     personaPhotoRef: model.persona?.photo_ref,
@@ -155,19 +167,9 @@ struct HomeView: View {
         }
     }
 
-    private var wordmarkHeader: some View {
-        HStack {
-            Spacer(minLength: 0)
-            Image("Wordmark")
-                .resizable()
-                .scaledToFit()
-                .frame(maxHeight: 56)
-                .accessibilityLabel("StoryPlots")
-            Spacer(minLength: 0)
-        }
-        .padding(.top, Theme.Spacing.s3)
-        .padding(.bottom, Theme.Spacing.s2)
-    }
+    // wordmarkHeader removed — the StoryPlots wordmark now lives in the
+    // toolbar's principal slot so it stays anchored at the top regardless
+    // of scroll position. See `.toolbar` in `body`.
 
     private var castSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
@@ -350,7 +352,6 @@ struct HomeView: View {
     private var loadingState: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.s4) {
-                wordmarkHeader
                 HomeHeaderView(
                     personaName: nil,
                     personaPhotoRef: nil,
