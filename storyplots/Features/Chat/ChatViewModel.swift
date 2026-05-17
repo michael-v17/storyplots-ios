@@ -444,6 +444,20 @@ final class ChatViewModel {
         streamState = .idle
     }
 
+    /// Re-call `/chat` to retry the last turn after a provider failure
+    /// (e.g. "Model returned only ''" degenerate-output safety). The
+    /// user message is already in the DB so we skip the insert and just
+    /// re-run the SSE consumption. Bound to the "Reintentar" button on
+    /// the error strip.
+    func retryLastTurn() {
+        guard !isStreaming else { return }
+        streamState = .streaming
+        transientNotice = nil
+        streamTask = Task { [weak self] in
+            await self?.runRetry()
+        }
+    }
+
     /// Add a new variant to the assistant message identified by `messageID`
     /// by POSTing `/chat` with `regenerate_message_id`. The backend creates
     /// the variant and streams its content; we keep the placeholder behavior
@@ -647,6 +661,77 @@ final class ChatViewModel {
             streamState = .idle
         } catch {
             chatLog.error("stream threw: \(error.localizedDescription, privacy: .public)")
+            streamState = .error(error.localizedDescription)
+        }
+    }
+
+    /// Re-run /chat with no payload changes after a provider failure.
+    /// Identical to runSend's stream-consumption path; skips step 1 (user
+    /// insert) since the user message is already persisted.
+    private func runRetry() async {
+        chatLog.info("retry begin conversation=\(self.conversationID, privacy: .public)")
+        let request: URLRequest
+        do {
+            request = try await makeChatRequest()
+        } catch {
+            chatLog.error("retry makeChatRequest failed: \(error.localizedDescription, privacy: .public)")
+            streamState = .error("Couldn't start the stream: \(error.localizedDescription)")
+            return
+        }
+
+        var assistantPlaceholderIndex: Int?
+        var buffer = ""
+
+        do {
+            let stream = URLSession.shared.eventStream(for: request)
+            for try await event in stream {
+                try Task.checkCancellation()
+                switch event {
+                case let .start(messageID, variantID):
+                    chatLog.info("retry stream start message=\(messageID, privacy: .public) variant=\(variantID, privacy: .public)")
+                    let placeholder = MessageItem(
+                        id: messageID,
+                        role: .assistant,
+                        body: "",
+                        createdAt: ISO8601DateFormatter().string(from: Date())
+                    )
+                    items.append(placeholder)
+                    assistantPlaceholderIndex = items.count - 1
+                case let .token(text):
+                    buffer += text
+                    if let idx = assistantPlaceholderIndex, idx < items.count {
+                        items[idx] = MessageItem(
+                            id: items[idx].id,
+                            role: .assistant,
+                            body: buffer,
+                            createdAt: items[idx].createdAt
+                        )
+                    }
+                case let .correction(payload):
+                    storeCorrection(payload)
+                case let .rewriteRequired(payload):
+                    storeCorrection(payload)
+                    transientNotice = "Rewrite required by grammar settings."
+                case let .grammarError(message):
+                    transientNotice = "Grammar agent: \(message)"
+                case let .error(message):
+                    chatLog.error("retry stream error: \(message, privacy: .public)")
+                    streamState = .error(message)
+                    if let idx = assistantPlaceholderIndex, idx < items.count {
+                        items.remove(at: idx)
+                    }
+                    return
+                case let .done(messageID, variantID):
+                    chatLog.info("retry stream done message=\(messageID, privacy: .public) variant=\(variantID, privacy: .public) tokens=\(buffer.count)")
+                    streamState = .idle
+                    return
+                }
+            }
+            streamState = .idle
+        } catch is CancellationError {
+            streamState = .idle
+        } catch {
+            chatLog.error("retry stream threw: \(error.localizedDescription, privacy: .public)")
             streamState = .error(error.localizedDescription)
         }
     }

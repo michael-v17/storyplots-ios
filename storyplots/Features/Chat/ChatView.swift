@@ -186,13 +186,33 @@ struct ChatView: View {
     @ViewBuilder
     private var errorStrip: some View {
         if case .error(let m) = model.streamState {
-            Text(m)
-                .font(Theme.FontStyle.meta)
-                .foregroundStyle(Theme.Color.destructive)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, Theme.Spacing.s4)
-                .padding(.vertical, Theme.Spacing.s2)
-                .background(Theme.Color.destructiveSoft)
+            HStack(alignment: .center, spacing: Theme.Spacing.s3) {
+                Text(m)
+                    .font(Theme.FontStyle.meta)
+                    .foregroundStyle(Theme.Color.destructive)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    Haptics.impact(.medium)
+                    model.retryLastTurn()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 12, weight: .bold))
+                        Text("Reintentar")
+                            .font(Theme.FontStyle.meta.weight(.semibold))
+                    }
+                    .foregroundStyle(model.accent)
+                    .padding(.horizontal, Theme.Spacing.s3)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(model.accent.opacity(0.15)))
+                    .overlay(Capsule().stroke(model.accent.opacity(0.55), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Reintentar")
+            }
+            .padding(.horizontal, Theme.Spacing.s4)
+            .padding(.vertical, Theme.Spacing.s2)
+            .background(Theme.Color.destructiveSoft)
         }
     }
 
