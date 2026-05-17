@@ -215,13 +215,15 @@ final class HomeViewModel {
         var grammar = (prefs["grammar"] as? [String: Any]) ?? [:]
         grammar["master"] = enabled
         prefs["grammar"] = grammar
-        guard let data = try? JSONSerialization.data(withJSONObject: prefs),
-              let prefsString = String(data: data, encoding: .utf8) else { return }
-        struct Update: Encodable { let preferences: String }
+        // Send as JSONB *object*, not a JSON-encoded string. See note in
+        // `PreferenceFamilyStore.save` — the backend reads this column with
+        // `prefs.get("grammar")` and explodes on a string with
+        // `'str' object has no attribute 'get'`.
+        struct Update: Encodable { let preferences: AnyJSON }
         let uid = try await client.auth.session.user.id.uuidString
         try await client
             .from("users")
-            .update(Update(preferences: prefsString))
+            .update(Update(preferences: PreferencesEncoding.anyJSON(from: prefs)))
             .eq("id", value: uid)
             .execute()
     }

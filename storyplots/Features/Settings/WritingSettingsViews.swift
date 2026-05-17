@@ -39,15 +39,61 @@ final class PreferenceFamilyStore: @unchecked Sendable {
             .value
         var prefs = (rows.first?.preferences?.value as? [String: Any]) ?? [:]
         prefs[family] = family_values
-        guard let data = try? JSONSerialization.data(withJSONObject: prefs),
-              let prefsString = String(data: data, encoding: .utf8) else { return }
-        struct Update: Encodable { let preferences: String }
+        // Send as a JSONB *object*, not a JSON-encoded string. PostgREST
+        // stores a String value inside a JSONB column verbatim — including
+        // the surrounding quotes — which then breaks any backend code that
+        // does `prefs.get("grammar")` because it gets a `str`, not a dict.
+        // AnyJSON (from supabase-swift's Helpers, re-exported via PostgREST)
+        // serializes inline as the right JSON shape.
+        struct Update: Encodable { let preferences: AnyJSON }
         if let uid = try? await client.auth.session.user.id.uuidString {
             try await client
                 .from("users")
-                .update(Update(preferences: prefsString))
+                .update(Update(preferences: PreferencesEncoding.anyJSON(from: prefs)))
                 .eq("id", value: uid)
                 .execute()
+        }
+    }
+}
+
+/// Bridge between Foundation `[String: Any]` JSON dicts and supabase-swift's
+/// strongly-typed `AnyJSON`. Used when writing back into a JSONB column so the
+/// payload serializes as a JSON object instead of a quoted string.
+enum PreferencesEncoding {
+    static func anyJSON(from value: Any?) -> AnyJSON {
+        switch value {
+        case nil, is NSNull:
+            return .null
+        case let bool as Bool:
+            return .bool(bool)
+        case let int as Int:
+            return .integer(int)
+        case let int as Int64:
+            return .integer(Int(int))
+        case let double as Double:
+            return .double(double)
+        case let float as Float:
+            return .double(Double(float))
+        case let number as NSNumber:
+            // NSNumber boxes both Bool and numerics; the Bool branch above
+            // catches Swift native Bools, but Foundation can hand us
+            // NSNumber-wrapped numerics from JSONSerialization round-trips.
+            if CFNumberIsFloatType(number) {
+                return .double(number.doubleValue)
+            }
+            return .integer(number.intValue)
+        case let string as String:
+            return .string(string)
+        case let array as [Any]:
+            return .array(array.map { anyJSON(from: $0) })
+        case let dict as [String: Any]:
+            var object: JSONObject = [:]
+            for (key, val) in dict {
+                object[key] = anyJSON(from: val)
+            }
+            return .object(object)
+        default:
+            return .null
         }
     }
 }
