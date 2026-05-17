@@ -67,17 +67,35 @@ struct ComposerView: View {
             .padding(.bottom, Theme.Spacing.s2)
         }
         .background {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(.regularMaterial)
+            // Real glass: ultraThinMaterial sees through to the scroll
+            // content behind (the mainStack ZStack overlays the composer
+            // on top of the scroll). A soft top-edge highlight gradient
+            // adds the glossy specular feel that distinguishes
+            // liquid-glass from a plain blur.
+            ZStack {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.08),
+                                Color.white.opacity(0.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                    )
+            }
         }
         .overlay {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .strokeBorder(
-                    isFocused ? accent.opacity(0.55) : Theme.Color.borderSoft.opacity(0.45),
+                    isFocused ? accent.opacity(0.55) : Color.white.opacity(0.18),
                     lineWidth: isFocused ? 1.25 : 0.75
                 )
         }
-        .shadow(color: Color.black.opacity(0.35), radius: 18, y: 6)
+        .shadow(color: Color.black.opacity(0.45), radius: 22, y: 8)
         .animation(Theme.Motion.snappy, value: isFocused)
         .padding(.horizontal, Theme.Spacing.s3)
         .padding(.bottom, Theme.Spacing.s2)

@@ -129,23 +129,31 @@ struct ChatView: View {
     }
 
     private var mainStack: some View {
-        VStack(spacing: 0) {
+        // ZStack so the composer overlays the scroll content instead of
+        // sitting in its own row at the bottom. Material backgrounds need
+        // something behind them to blur — without overlap the composer
+        // just renders as a flat dark fill. With overlap we get real
+        // liquid-glass behavior: messages visible through the composer
+        // when they scroll under it.
+        ZStack(alignment: .bottom) {
             messagesScroll
-            noticeStrip
-            errorStrip
-            ComposerView(
-                draft: $draft,
-                accent: model.accent,
-                isStreaming: model.isStreaming,
-                placeholderName: model.characterName,
-                chatPanel: $activePanel,
-                onSend: {
-                    let toSend = draft
-                    draft = ""
-                    model.send(toSend)
-                },
-                onCancel: { model.cancelStream() }
-            )
+            VStack(spacing: 0) {
+                noticeStrip
+                errorStrip
+                ComposerView(
+                    draft: $draft,
+                    accent: model.accent,
+                    isStreaming: model.isStreaming,
+                    placeholderName: model.characterName,
+                    chatPanel: $activePanel,
+                    onSend: {
+                        let toSend = draft
+                        draft = ""
+                        model.send(toSend)
+                    },
+                    onCancel: { model.cancelStream() }
+                )
+            }
         }
     }
 
@@ -269,7 +277,8 @@ struct ChatView: View {
                     ChatBubbleSkeleton()
                 }
             }
-            .padding(.vertical, Theme.Spacing.s3)
+            .padding(.top, Theme.Spacing.s3)
+            .padding(.bottom, 130)
         }
         .disabled(true)
     }
@@ -345,7 +354,12 @@ struct ChatView: View {
                             emptyState
                         }
                     }
-                    .padding(.vertical, Theme.Spacing.s3)
+                    .padding(.top, Theme.Spacing.s3)
+                    // Composer overlays the scroll; reserve enough room
+                    // for a multi-line glass composer + bottom safe-area
+                    // breathing room. Otherwise the last message hides
+                    // behind the floating card.
+                    .padding(.bottom, 130)
                 }
                 .onChange(of: model.items.count) { _, _ in
                     if let last = model.items.last {
