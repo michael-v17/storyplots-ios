@@ -1,15 +1,18 @@
 import SwiftUI
 
-/// Phase 4 composer skeleton — TextField + send button. The button is
-/// disabled until Phase 5 wires `/chat` streaming.
+/// Claude-style glass composer: text field stacked above a button row,
+/// the whole thing wrapped in a `.regularMaterial` card with a soft
+/// accent-lit border. Floats above the bottom safe area instead of
+/// docking edge-to-edge. Per creator feedback to match the modern
+/// Claude iOS chat input.
 struct ComposerView: View {
     @Binding var draft: String
     let accent: Color
     let isStreaming: Bool
     let placeholderName: String?
     /// Optional binding into the chat-panels enum. When non-nil the composer
-    /// renders the `⋯` PersonaLLM-style chat-controls launcher on the left
-    /// (panels = grammar, memory, lorebook, author's note, controls, gen
+    /// renders the `⋯` PersonaLLM-style chat-controls launcher in the bottom
+    /// row (panels = grammar, memory, lorebook, author's note, controls, gen
     /// overrides). When nil the left chip is omitted.
     let chatPanel: Binding<ChatPanel?>?
     let onSend: () -> Void
@@ -43,38 +46,41 @@ struct ComposerView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.s3) {
-            if let chatPanel {
-                ChatPanelsMenu(presented: chatPanel, accent: accent)
-                    .frame(width: 40, height: 40)
-            }
-
+        VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
             TextField(placeholder, text: $draft, axis: .vertical)
-                .lineLimit(1...5)
+                .lineLimit(1...6)
                 .focused($isFocused)
-                .padding(.horizontal, Theme.Spacing.s4)
-                .padding(.vertical, Theme.Spacing.s3)
-                .background(Theme.Color.bg3, in: Capsule())
-                .overlay(
-                    Capsule()
-                        .strokeBorder(
-                            isFocused ? accent.opacity(0.55) : accent.opacity(0.22),
-                            lineWidth: isFocused ? 1.5 : 1
-                        )
-                )
+                .font(.body)
                 .foregroundStyle(Theme.Color.fg)
-                .animation(Theme.Motion.snappy, value: isFocused)
+                .tint(accent)
+                .padding(.horizontal, Theme.Spacing.s3 + 2)
+                .padding(.top, Theme.Spacing.s3 + 2)
 
-            rightActionButton
+            HStack(spacing: Theme.Spacing.s2) {
+                if let chatPanel {
+                    ChatPanelsMenu(presented: chatPanel, accent: accent)
+                }
+                Spacer(minLength: 0)
+                rightActionButton
+            }
+            .padding(.horizontal, Theme.Spacing.s2)
+            .padding(.bottom, Theme.Spacing.s2)
         }
+        .background {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(.regularMaterial)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .strokeBorder(
+                    isFocused ? accent.opacity(0.55) : Theme.Color.borderSoft.opacity(0.45),
+                    lineWidth: isFocused ? 1.25 : 0.75
+                )
+        }
+        .shadow(color: Color.black.opacity(0.35), radius: 18, y: 6)
+        .animation(Theme.Motion.snappy, value: isFocused)
         .padding(.horizontal, Theme.Spacing.s3)
-        .padding(.vertical, Theme.Spacing.s2)
-        .background(.thinMaterial)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Theme.Color.borderSoft.opacity(0.45))
-                .frame(height: 0.5)
-        }
+        .padding(.bottom, Theme.Spacing.s2)
     }
 
     @ViewBuilder
@@ -85,11 +91,12 @@ struct ComposerView: View {
                 onCancel()
             } label: {
                 Image(systemName: "stop.fill")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Theme.Color.fgOnBrand)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 36, height: 36)
                     .background(Theme.Color.destructive, in: Circle())
             }
+            .accessibilityLabel("Stop")
         } else if canSend {
             Button {
                 Haptics.impact(.medium)
@@ -97,9 +104,9 @@ struct ComposerView: View {
                 onSend()
             } label: {
                 Image(systemName: "arrow.up")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Theme.Color.fgOnBrand)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 36, height: 36)
                     .background(
                         LinearGradient(
                             colors: [accent, accent.opacity(0.7)],
@@ -112,6 +119,7 @@ struct ComposerView: View {
                     .scaleEffect(sendPulse ? 0.85 : 1.0)
                     .animation(Theme.Motion.pop, value: sendPulse)
             }
+            .accessibilityLabel("Send")
         } else {
             // PersonaLLM shows a mic chip in this slot — voice dictation isn't
             // wired in iOS yet, so the icon is visually present (matches the
@@ -120,16 +128,11 @@ struct ComposerView: View {
                 Haptics.impact(.light)
             } label: {
                 Image(systemName: "mic.fill")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(accent)
-                    .frame(width: 40, height: 40)
-                    .background {
-                        ZStack {
-                            Circle().fill(Theme.Material.chip)
-                            Circle().fill(accent.opacity(0.20))
-                        }
-                    }
-                    .overlay(Circle().stroke(accent.opacity(0.55), lineWidth: 1))
+                    .frame(width: 36, height: 36)
+                    .background(accent.opacity(0.18), in: Circle())
+                    .overlay(Circle().stroke(accent.opacity(0.45), lineWidth: 0.75))
             }
             .accessibilityLabel("Voice input")
         }
@@ -157,16 +160,11 @@ struct ChatPanelsMenu: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(accent)
-                .frame(width: 40, height: 40)
-                .background {
-                    ZStack {
-                        Circle().fill(Theme.Material.chip)
-                        Circle().fill(accent.opacity(0.20))
-                    }
-                }
-                .overlay(Circle().stroke(accent.opacity(0.55), lineWidth: 1))
+                .frame(width: 36, height: 36)
+                .background(accent.opacity(0.18), in: Circle())
+                .overlay(Circle().stroke(accent.opacity(0.45), lineWidth: 0.75))
         }
         .accessibilityLabel("Chat controls")
     }

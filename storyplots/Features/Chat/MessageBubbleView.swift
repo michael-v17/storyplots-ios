@@ -299,14 +299,11 @@ struct MessageBubbleView: View {
         nil
     }
 
-    /// Try Markdown first; fall back to plain Text per `seed/tech-stack.md` §3 Q3.3.
-    @ViewBuilder
+    /// Styled body — see `MessageBodyStyler` for the action / dialogue /
+    /// OOC voice rules. Falls back to plain text on parser failure per
+    /// `seed/tech-stack.md` §3 Q3.3.
     private var renderedBody: some View {
-        if let attributed = try? AttributedString(markdown: item.body, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
-            Text(attributed)
-        } else {
-            Text(item.body)
-        }
+        Text(MessageBodyStyler.attributed(item.body))
     }
 
     /// `HH:mm` clock label beneath every bubble, matching PersonaLLM's per-
