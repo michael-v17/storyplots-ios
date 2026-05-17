@@ -129,14 +129,32 @@ struct ChatView: View {
     }
 
     private var mainStack: some View {
-        // ZStack so the composer overlays the scroll content instead of
-        // sitting in its own row at the bottom. Material backgrounds need
-        // something behind them to blur — without overlap the composer
-        // just renders as a flat dark fill. With overlap we get real
-        // liquid-glass behavior: messages visible through the composer
-        // when they scroll under it.
+        // ZStack so the composer overlays the scroll content. Adds a tall
+        // dark scrim above the composer that fades messages from readable
+        // to nearly invisible as they scroll under the input — matches
+        // Claude's chat composer where the dark gradient frames the glass
+        // pill and makes content behind it recede.
         ZStack(alignment: .bottom) {
             messagesScroll
+            // Dark scrim: clear at the top, deepens to nearly solid bg
+            // right where the composer card sits. Aggressive bottom-half
+            // makes the composer's frosted glass the visual focus and
+            // lets behind-the-composer content recede to a barely-there
+            // hint — Claude's chat-input treatment.
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    Theme.Color.bg.opacity(0.45),
+                    Theme.Color.bg.opacity(0.88),
+                    Theme.Color.bg
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 260)
+            .frame(maxWidth: .infinity, alignment: .bottom)
+            .allowsHitTesting(false)
+            .frame(maxHeight: .infinity, alignment: .bottom)
             VStack(spacing: 0) {
                 noticeStrip
                 errorStrip

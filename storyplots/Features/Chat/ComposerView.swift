@@ -97,8 +97,11 @@ struct ComposerView: View {
         }
         .shadow(color: Color.black.opacity(0.45), radius: 22, y: 8)
         .animation(Theme.Motion.snappy, value: isFocused)
-        .padding(.horizontal, Theme.Spacing.s3)
-        .padding(.bottom, Theme.Spacing.s2)
+        // Claude-style: composer hugs the screen edges with only a thin
+        // gutter, sitting just above the safe-area inset so it feels
+        // anchored to the bottom rather than floating in space.
+        .padding(.horizontal, Theme.Spacing.s2)
+        .padding(.bottom, 4)
     }
 
     @ViewBuilder
