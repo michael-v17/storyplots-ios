@@ -129,36 +129,29 @@ struct ChatView: View {
     }
 
     private var mainStack: some View {
-        // ZStack so the composer overlays the scroll content. Adds a tall
-        // dark scrim above the composer that fades messages from readable
-        // to nearly invisible as they scroll under the input — matches
-        // Claude's chat composer where the dark gradient frames the glass
-        // pill and makes content behind it recede.
+        // ZStack so the composer overlays the scroll content. The composer's
+        // glass material blurs anything scrolling behind it; we deliberately
+        // do NOT add a dark scrim above the composer — Claude leaves that
+        // area fully clear so messages right up to the composer top stay
+        // readable. The only darkness around the composer is the host `bg`
+        // showing through its horizontal padding (sides) and a tiny bg
+        // strip pinned to the very bottom of the screen so anything
+        // peeking into the home-indicator zone stays obscured.
         ZStack(alignment: .bottom) {
             messagesScroll
-            // Dark scrim — Claude's pattern. Top third is a soft fade from
-            // clear so content above the composer area transitions into
-            // shadow as it scrolls down; the bottom two thirds are solid
-            // `bg` so anything behind, around, or below the composer pill
-            // is fully obscured. The composer's frosted glass then sits
-            // over the solid portion, so what reads through it is bg plus
-            // the material's own highlights, not actual chat text.
-            LinearGradient(
-                stops: [
-                    .init(color: Color.clear, location: 0.0),
-                    .init(color: Theme.Color.bg.opacity(0.55), location: 0.18),
-                    .init(color: Theme.Color.bg.opacity(0.92), location: 0.34),
-                    .init(color: Theme.Color.bg, location: 0.45),
-                    .init(color: Theme.Color.bg, location: 1.0)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 340)
-            .frame(maxWidth: .infinity, alignment: .bottom)
-            .allowsHitTesting(false)
-            .frame(maxHeight: .infinity, alignment: .bottom)
-            .ignoresSafeArea(edges: .bottom)
+            // Solid bg in the safe-area zone + just below the composer.
+            // Covers the area *under* the floating composer so the home
+            // indicator and any content that scrolls past the composer's
+            // bottom edge read as plain bg, not as half-blurred chat text.
+            // No top scrim — content right above the composer stays fully
+            // readable, exactly like Claude.
+            Rectangle()
+                .fill(Theme.Color.bg)
+                .frame(height: 60)
+                .frame(maxWidth: .infinity, alignment: .bottom)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(false)
             VStack(spacing: 0) {
                 noticeStrip
                 errorStrip
