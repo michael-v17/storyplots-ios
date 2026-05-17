@@ -51,17 +51,20 @@ extension View {
     /// radial glow anchored behind the header, falling off omnidirectionally
     /// instead of dropping straight down. Use on ChatView only — other root
     /// surfaces keep the linear `accentTopWash`.
-    func accentHaloWash(color: Color, intensity: Double = 0.22, radius: CGFloat = 520) -> some View {
+    func accentHaloWash(color: Color, intensity: Double = 0.30, radius: CGFloat = 660) -> some View {
         modifier(AccentHaloWash(color: color, intensity: intensity, radius: radius))
     }
 }
 
 /// Soft radial halo + a faint linear tail so the falloff continues past the
 /// halo's edge without re-introducing the banner look of the linear wash.
+/// Tuned for `bg = 0x0F0F10` — intensity 0.30 + radius ~660pt reads as a
+/// clear "character casts light" on the dark surface without becoming a
+/// banner.
 struct AccentHaloWash: ViewModifier {
     var color: Color
-    var intensity: Double = 0.22
-    var radius: CGFloat = 520
+    var intensity: Double = 0.30
+    var radius: CGFloat = 660
 
     func body(content: Content) -> some View {
         content
@@ -69,20 +72,20 @@ struct AccentHaloWash: ViewModifier {
                 ZStack(alignment: .top) {
                     LinearGradient(
                         colors: [
-                            color.opacity(intensity * 0.35),
-                            color.opacity(intensity * 0.12),
+                            color.opacity(intensity * 0.40),
+                            color.opacity(intensity * 0.15),
                             Color.clear
                         ],
                         startPoint: .top,
                         endPoint: .bottom
                     )
-                    .frame(height: radius * 0.95)
+                    .frame(height: radius * 1.05)
 
                     RadialGradient(
                         colors: [
                             color.opacity(intensity),
-                            color.opacity(intensity * 0.45),
-                            color.opacity(intensity * 0.12),
+                            color.opacity(intensity * 0.55),
+                            color.opacity(intensity * 0.18),
                             Color.clear
                         ],
                         center: .top,

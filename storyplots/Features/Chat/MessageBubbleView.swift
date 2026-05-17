@@ -183,11 +183,18 @@ struct MessageBubbleView: View {
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(isActive ? Theme.Color.fgOnBrand : accent)
                 .frame(width: 40, height: 40)
-                .background(
-                    Circle().fill(accent.opacity(isActive ? 0.85 : 0.14))
-                )
+                .background {
+                    if isActive {
+                        Circle().fill(accent.opacity(0.85))
+                    } else {
+                        ZStack {
+                            Circle().fill(Theme.Material.chip)
+                            Circle().fill(accent.opacity(0.18))
+                        }
+                    }
+                }
                 .overlay(
-                    Circle().stroke(accent.opacity(isActive ? 0 : 0.45), lineWidth: 1)
+                    Circle().stroke(accent.opacity(isActive ? 0 : 0.55), lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
@@ -199,7 +206,10 @@ struct MessageBubbleView: View {
         return VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
             renderedBody
                 .font(.body)
-                .foregroundStyle(isAssistant ? Theme.Color.fg : Theme.Color.fgOnBrand)
+                // White on every bubble — user pill reads cleaner with white
+                // than the default black `fgOnBrand` on saturated accents
+                // (orange, teal, sky), and the assistant already uses fg.
+                .foregroundStyle(Theme.Color.fg)
                 .frame(maxWidth: bubbleMaxWidth, alignment: .leading)
         }
         .padding(Theme.Spacing.s3)

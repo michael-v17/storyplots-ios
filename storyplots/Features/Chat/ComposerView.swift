@@ -123,7 +123,12 @@ struct ComposerView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(accent)
                     .frame(width: 40, height: 40)
-                    .background(accent.opacity(0.18), in: Circle())
+                    .background {
+                        ZStack {
+                            Circle().fill(Theme.Material.chip)
+                            Circle().fill(accent.opacity(0.20))
+                        }
+                    }
                     .overlay(Circle().stroke(accent.opacity(0.55), lineWidth: 1))
             }
             .accessibilityLabel("Voice input")
@@ -155,7 +160,12 @@ struct ChatPanelsMenu: View {
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(accent)
                 .frame(width: 40, height: 40)
-                .background(accent.opacity(0.18), in: Circle())
+                .background {
+                    ZStack {
+                        Circle().fill(Theme.Material.chip)
+                        Circle().fill(accent.opacity(0.20))
+                    }
+                }
                 .overlay(Circle().stroke(accent.opacity(0.55), lineWidth: 1))
         }
         .accessibilityLabel("Chat controls")
