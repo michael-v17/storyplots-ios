@@ -49,6 +49,9 @@ struct PeopleView: View {
                     .opacity(navTitleVisible ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.2), value: navTitleVisible)
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Color.clear.frame(width: 36, height: 36)
+            }
         }
         .searchable(text: Binding(
             get: { model.searchText },

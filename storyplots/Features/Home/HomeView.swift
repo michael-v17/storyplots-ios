@@ -75,6 +75,13 @@ struct HomeView: View {
                     .opacity(navWordmarkVisible ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.2), value: navWordmarkVisible)
             }
+            // Invisible counterweight so the `principal` slot centers
+            // against the screen instead of being pushed right by the
+            // unbalanced leading hamburger. Matches the SidebarToggle's
+            // 36×36 frame so the math comes out symmetric.
+            ToolbarItem(placement: .topBarTrailing) {
+                Color.clear.frame(width: 36, height: 36)
+            }
         }
         .searchable(text: $searchText, prompt: "Search characters")
         .onChange(of: searchText) { _, newValue in

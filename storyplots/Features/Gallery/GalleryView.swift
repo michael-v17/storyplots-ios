@@ -49,6 +49,9 @@ struct GalleryView: View {
                     .opacity(navTitleVisible ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.2), value: navTitleVisible)
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Color.clear.frame(width: 36, height: 36)
+            }
         }
         .refreshable { await model.load() }
         .task { if model.loadState == .idle { await model.load() } }
