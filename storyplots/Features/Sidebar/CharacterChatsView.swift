@@ -1,5 +1,8 @@
 import SwiftUI
 import Supabase
+import OSLog
+
+private let chatsLog = Logger(subsystem: "com.storyplots.ios", category: "character-chats")
 
 struct CharacterChatsView: View {
     let character: Character
@@ -11,20 +14,35 @@ struct CharacterChatsView: View {
     @Namespace private var transitionNamespace
     @State private var previews: [String: String] = [:]
     @State private var showAvatarFullscreen: Bool = false
+    /// IDs of conversations the user has just deleted. We don't refetch
+    /// after delete — instead we filter the supplied `conversations`
+    /// array through this set so the row disappears immediately and
+    /// stays gone until the parent view re-loads the list.
+    @State private var deletedIDs: Set<String> = []
+    /// Confirmation flow — set to the conversation pending deletion so
+    /// `.alert` can read its title for the message body.
+    @State private var pendingDelete: Conversation?
+    /// Surfaced after a delete fails so the user knows the row didn't
+    /// actually go away on the server.
+    @State private var deleteError: String?
+
+    private var visibleConversations: [Conversation] {
+        conversations.filter { !deletedIDs.contains($0.id) }
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 header
                 LazyVStack(spacing: Theme.Spacing.s3) {
-                    if conversations.isEmpty {
+                    if visibleConversations.isEmpty {
                         EmptyStateView(
                             systemImage: "bubble.left.and.bubble.right",
                             title: "No chats with \(character.name)",
                             message: "Open the character to start a fresh conversation."
                         )
                     } else {
-                        ForEach(conversations) { conv in
+                        ForEach(visibleConversations) { conv in
                             NavigationLink {
                                 ChatView(
                                     conversationID: conv.id,
@@ -47,6 +65,14 @@ struct CharacterChatsView: View {
                                 .matchedTransitionSource(id: "card-\(conv.id)", in: transitionNamespace)
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    Haptics.notify(.warning)
+                                    pendingDelete = conv
+                                } label: {
+                                    Label("Delete conversation", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
@@ -104,7 +130,53 @@ struct CharacterChatsView: View {
                 showAvatarFullscreen = false
             }
         }
+        .confirmationDialog(
+            pendingDelete.map { "Delete \"\($0.title)\"?" } ?? "Delete conversation?",
+            isPresented: Binding(
+                get: { pendingDelete != nil },
+                set: { if !$0 { pendingDelete = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pendingDelete
+        ) { conv in
+            Button("Delete", role: .destructive) {
+                Task { await delete(conv) }
+            }
+            Button("Cancel", role: .cancel) { pendingDelete = nil }
+        } message: { _ in
+            Text("This permanently removes the conversation and every message in it. It can't be undone.")
+        }
+        .alert("Couldn't delete conversation",
+               isPresented: Binding(get: { deleteError != nil },
+                                    set: { if !$0 { deleteError = nil } })) {
+            Button("OK", role: .cancel) { deleteError = nil }
+        } message: {
+            Text(deleteError ?? "")
+        }
         .task(id: conversationIDsKey) { await loadPreviews() }
+    }
+
+    /// Permanently remove a conversation. Optimistically hides the row on
+    /// success — we don't refetch since the parent's `conversations` array
+    /// is a snapshot. If the DB delete fails the row reappears on next
+    /// open of the sheet and we surface the error.
+    private func delete(_ conv: Conversation) async {
+        pendingDelete = nil
+        do {
+            try await client
+                .from("conversations")
+                .delete()
+                .eq("id", value: conv.id)
+                .execute()
+            chatsLog.info("deleted conversation id=\(conv.id, privacy: .public)")
+            Haptics.notify(.success)
+            withAnimation(.easeInOut(duration: 0.2)) {
+                _ = deletedIDs.insert(conv.id)
+            }
+        } catch {
+            chatsLog.error("delete failed for \(conv.id, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            deleteError = error.localizedDescription
+        }
     }
 
     private var header: some View {
