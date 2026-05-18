@@ -300,8 +300,8 @@ struct ChatView: View {
                 }
             }
             .padding(.top, Theme.Spacing.s3)
-            .padding(.bottom, 130)
         }
+        .contentMargins(.bottom, 170, for: .scrollContent)
         .disabled(true)
     }
 
@@ -377,12 +377,17 @@ struct ChatView: View {
                         }
                     }
                     .padding(.top, Theme.Spacing.s3)
-                    // Composer overlays the scroll; reserve enough room
-                    // for a multi-line glass composer + bottom safe-area
-                    // breathing room. Otherwise the last message hides
-                    // behind the floating card.
-                    .padding(.bottom, 130)
                 }
+                // The composer floats over the scroll. Plain
+                // `padding(.bottom)` on the VStack pushes content up but
+                // `scrollTo(item, anchor: .bottom)` ignores it and lands
+                // the item flush with the viewport bottom — which is
+                // *under* the composer. `.contentMargins(.bottom)` is the
+                // iOS 17+ API that tells the scroll-to logic to treat
+                // this many points as the effective bottom inset, so the
+                // last message lands above the composer instead of hiding
+                // behind the glass card.
+                .contentMargins(.bottom, 170, for: .scrollContent)
                 // Initial scroll: as soon as the first batch of messages
                 // lands, drop the user at the most recent message instead
                 // of the top of the thread.
