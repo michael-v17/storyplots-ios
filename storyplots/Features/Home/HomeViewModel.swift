@@ -214,6 +214,15 @@ final class HomeViewModel {
         var prefs = (rows.first?.preferences?.value as? [String: Any]) ?? [:]
         var grammar = (prefs["grammar"] as? [String: Any]) ?? [:]
         grammar["master"] = enabled
+        // Default `inline_enabled` to true the first time the user turns
+        // master on from this widget — the backend AND-gates inline
+        // corrections on both flags, so without this they'd toggle the
+        // Home widget on, send a typo, and see no correction strip.
+        // Once the user explicitly toggles it from Settings the saved
+        // value sticks (we only set it here if missing).
+        if grammar["inline_enabled"] == nil {
+            grammar["inline_enabled"] = true
+        }
         prefs["grammar"] = grammar
         // Send as JSONB *object*, not a JSON-encoded string. See note in
         // `PreferenceFamilyStore.save` — the backend reads this column with

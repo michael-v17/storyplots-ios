@@ -239,19 +239,19 @@ struct WritingStylesSettingsView: View {
 struct GrammarSettingsView: View {
     let client: SupabaseClient
 
-    @State private var enabled: Bool = true
-    @State private var inline: Bool = true
-    @State private var rewriteGate: Bool = false
+    @State private var master: Bool = true
+    @State private var inlineEnabled: Bool = true
+    @State private var reinforcementEnabled: Bool = false
     @State private var strikeThreshold: Int = 3
 
     var body: some View {
         Form {
-            Toggle("Grammar agent enabled", isOn: $enabled)
-                .onChange(of: enabled) { _, _ in Haptics.selection(); Task { await save() } }
-            Toggle("Inline corrections", isOn: $inline)
-                .onChange(of: inline) { _, _ in Task { await save() } }
-            Toggle("Rewrite gate", isOn: $rewriteGate)
-                .onChange(of: rewriteGate) { _, _ in Task { await save() } }
+            Toggle("Grammar agent enabled", isOn: $master)
+                .onChange(of: master) { _, _ in Haptics.selection(); Task { await save() } }
+            Toggle("Inline corrections", isOn: $inlineEnabled)
+                .onChange(of: inlineEnabled) { _, _ in Task { await save() } }
+            Toggle("Rewrite gate", isOn: $reinforcementEnabled)
+                .onChange(of: reinforcementEnabled) { _, _ in Task { await save() } }
             Stepper(value: $strikeThreshold, in: 1...10) {
                 HStack { Text("Strike threshold"); Spacer(); Text("\(strikeThreshold)").foregroundStyle(Theme.Color.fg2) }
             }
@@ -262,21 +262,40 @@ struct GrammarSettingsView: View {
         .task { await load() }
     }
 
+    /// Backend expects `master`, `inline_enabled`, `reinforcement_enabled`,
+    /// `strike_threshold` under `users.preferences.grammar`. Earlier
+    /// versions of this screen wrote `enabled`, `inline`, `rewrite_gate`
+    /// — keys the backend silently ignored, so inline corrections never
+    /// fired for anyone who had only ever set things from Settings. On
+    /// load, fall back to those legacy keys if present and immediately
+    /// save under the new keys so the migration happens at first open.
     private func load() async {
         let store = PreferenceFamilyStore(client: client, family: "grammar")
         let prefs = (try? await store.load()) ?? [:]
-        if let v = prefs["enabled"] as? Bool { enabled = v }
-        if let v = prefs["inline"] as? Bool { inline = v }
-        if let v = prefs["rewrite_gate"] as? Bool { rewriteGate = v }
-        if let v = prefs["strike_threshold"] as? Int { strikeThreshold = v }
+        master = (prefs["master"] as? Bool)
+            ?? (prefs["enabled"] as? Bool)
+            ?? true
+        inlineEnabled = (prefs["inline_enabled"] as? Bool)
+            ?? (prefs["inline"] as? Bool)
+            ?? true
+        reinforcementEnabled = (prefs["reinforcement_enabled"] as? Bool)
+            ?? (prefs["rewrite_gate"] as? Bool)
+            ?? false
+        strikeThreshold = (prefs["strike_threshold"] as? Int) ?? 3
+        // If we read any legacy keys, persist back under the new ones
+        // so the next read finds them directly.
+        let hasLegacy = prefs["enabled"] != nil
+            || prefs["inline"] != nil
+            || prefs["rewrite_gate"] != nil
+        if hasLegacy { await save() }
     }
 
     private func save() async {
         let store = PreferenceFamilyStore(client: client, family: "grammar")
         try? await store.save([
-            "enabled": enabled,
-            "inline": inline,
-            "rewrite_gate": rewriteGate,
+            "master": master,
+            "inline_enabled": inlineEnabled,
+            "reinforcement_enabled": reinforcementEnabled,
             "strike_threshold": strikeThreshold
         ])
     }
