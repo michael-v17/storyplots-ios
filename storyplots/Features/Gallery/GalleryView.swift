@@ -43,11 +43,9 @@ struct GalleryView: View {
                 SidebarToggleButton()
             }
             ToolbarItem(placement: .principal) {
-                // See HomeView for why we offset rather than counterweight.
                 Text("Gallery")
                     .font(.headline)
                     .foregroundStyle(Theme.Color.fg)
-                    .offset(x: -30)
                     .opacity(navTitleVisible ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.2), value: navTitleVisible)
             }

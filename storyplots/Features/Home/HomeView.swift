@@ -67,20 +67,19 @@ struct HomeView: View {
                 SidebarToggleButton()
             }
             ToolbarItem(placement: .principal) {
-                // iOS 26 centers `principal` between the last leading and
-                // trailing items, not between screen edges — so with only
-                // a leading hamburger the wordmark drifts right. We can't
-                // add a trailing counterweight (iOS wraps every toolbar
-                // item in an automatic glass capsule, which renders as a
-                // visibly empty pill on the right). Instead, compensate
-                // by offsetting the wordmark left by roughly half the
-                // hamburger's footprint to land on the true screen center.
+                // Image-based principal items drift right of screen
+                // center under iOS 26 — measured via AX: the wordmark
+                // sat at x=211 width=74 (center 248pt) with no offset
+                // on iPhone 17 Pro Max, whereas screen center is 220pt.
+                // -28pt brings the image's visual midpoint onto the
+                // Dynamic Island axis. Text principals don't need this
+                // (iOS centers them correctly already).
                 Image("Wordmark")
                     .resizable()
                     .scaledToFit()
                     .frame(maxHeight: 22)
                     .accessibilityLabel("StoryPlots")
-                    .offset(x: -30)
+                    .offset(x: -28)
                     .opacity(navWordmarkVisible ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.2), value: navWordmarkVisible)
             }
