@@ -23,6 +23,13 @@ struct MessageImageRail: View {
         if images.isEmpty && isLoading {
             fullWidthLoadingCard
                 .padding(.top, Theme.Spacing.s2)
+        } else if images.count == 1, let only = images.first, !isLoading {
+            // Single image, no pending generation → render at full
+            // bubble width so the image actually reads instead of
+            // sitting as a thumbnail off to the side. Tap still opens
+            // the fullscreen viewer.
+            singleFullWidthImage(for: only)
+                .padding(.top, Theme.Spacing.s2)
         } else {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Theme.Spacing.s2) {
@@ -40,6 +47,54 @@ struct MessageImageRail: View {
                 .padding(.horizontal, Theme.Spacing.s1)
             }
             .padding(.top, Theme.Spacing.s2)
+        }
+    }
+
+    /// Single-image render: full bubble width, taller aspect so the
+    /// image is legible inline instead of needing a tap into the
+    /// fullscreen viewer to see it.
+    @ViewBuilder
+    private func singleFullWidthImage(for image: GeneratedImage) -> some View {
+        if image.sfw_blocked == true {
+            sfwBlockedCard
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+        } else {
+            CachedRemoteImage(
+                cacheKey: MessageImageThumbnail.cacheKey(for: image),
+                resolver: { @Sendable in
+                    await SupabaseStorageHelper.shared.displayURL(
+                        engine: image.engine,
+                        externalURL: image.external_url,
+                        storageRef: image.storage_ref
+                    )
+                }
+            ) { phase in
+                switch phase {
+                case .success(let img):
+                    img.resizable().scaledToFill()
+                case .failure:
+                    Image(systemName: "photo")
+                        .font(.system(size: 32))
+                        .foregroundStyle(Theme.Color.fg3)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Theme.Color.bg3)
+                case .empty:
+                    ProgressView().tint(accent)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Theme.Color.bg3)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 260)
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.card)
+                    .stroke(accent.opacity(0.35), lineWidth: 1)
+            )
+            .matchedGeometryEffect(id: "img-\(image.id)", in: namespace)
+            .onTapGesture { onSelect(image) }
         }
     }
 
@@ -159,7 +214,7 @@ struct MessageImageThumbnail: View {
         .matchedGeometryEffect(id: "img-\(image.id)", in: namespace)
     }
 
-    private static func cacheKey(for image: GeneratedImage) -> String? {
+    static func cacheKey(for image: GeneratedImage) -> String? {
         if let ref = image.storage_ref, !ref.isEmpty {
             return "media:\(ref)"
         }
