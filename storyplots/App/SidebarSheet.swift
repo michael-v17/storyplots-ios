@@ -13,6 +13,7 @@ struct SidebarSheet: View {
 
     @State private var showPersonaSheet: Bool = false
     @State private var showSettings: Bool = false
+    @State private var navWordmarkVisible: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -34,14 +35,43 @@ struct SidebarSheet: View {
                 }
                 .padding(.vertical, Theme.Spacing.s4)
             }
+            .onScrollGeometryChange(for: Double.self) { geo in
+                geo.contentOffset.y
+            } action: { _, y in
+                navWordmarkVisible = y > 40
+            }
             .background(Theme.Color.bg)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Theme.Material.navBar, for: .navigationBar)
+            // No forced material — `.automatic` keeps the toolbar fully
+            // clear at scroll-zero and only fades the system glass in
+            // when content actually scrolls behind it. Matches the
+            // Claude / ChatGPT sheet pattern.
+            .toolbarBackground(.automatic, for: .navigationBar)
             .toolbarBackgroundVisibility(.automatic, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .foregroundStyle(Theme.Color.brand1)
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        Haptics.impact(.light)
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.Color.fg)
+                            .frame(width: 30, height: 30)
+                            .background(Color.white.opacity(0.10), in: Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.18), lineWidth: 0.75))
+                    }
+                    .accessibilityLabel("Close menu")
+                }
+                ToolbarItem(placement: .principal) {
+                    Image("Wordmark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 22)
+                        .accessibilityLabel("StoryPlots")
+                        .offset(x: -28)
+                        .opacity(navWordmarkVisible ? 1.0 : 0.0)
+                        .animation(.easeInOut(duration: 0.2), value: navWordmarkVisible)
                 }
             }
             .sheet(isPresented: $showPersonaSheet) {
