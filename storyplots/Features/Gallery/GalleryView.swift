@@ -47,7 +47,7 @@ struct GalleryView: View {
                 Text("Gallery")
                     .font(.headline)
                     .foregroundStyle(Theme.Color.fg)
-                    .offset(x: -32)
+                    .offset(x: -30)
                     .opacity(navTitleVisible ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.2), value: navTitleVisible)
             }
