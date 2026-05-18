@@ -74,8 +74,52 @@ final class HomeViewModel {
             self.grammarAccuracy = accuracy
             self.grammarMasterEnabled = masterOn
             self.loadState = .loaded
+            // Self-heal: existing users who turned grammar on with the
+            // old key-mismatched build have `master=true` but no
+            // `inline_enabled` set. Without the second flag the backend
+            // never runs grammar, so the inline correction pill never
+            // appears even with obvious typos. If we see that combo,
+            // silently seed `inline_enabled=true` once so corrections
+            // start firing without forcing the user to re-toggle.
+            if masterOn {
+                Task { await migrateInlineEnabledIfMissing() }
+            }
         } catch {
             self.loadState = .error(error.localizedDescription)
+        }
+    }
+
+    /// One-shot migration: if `users.preferences.grammar.master` is true
+    /// but `inline_enabled` was never written, persist
+    /// `inline_enabled=true`. Skips the write entirely once the key
+    /// exists, so this is safe to call on every load.
+    private func migrateInlineEnabledIfMissing() async {
+        struct Row: Decodable { let preferences: AnyCodable? }
+        do {
+            let rows: [Row] = try await client
+                .from("users")
+                .select("preferences")
+                .limit(1)
+                .execute()
+                .value
+            var prefs = (rows.first?.preferences?.value as? [String: Any]) ?? [:]
+            var grammar = (prefs["grammar"] as? [String: Any]) ?? [:]
+            // If the inline_enabled key is already present (even as
+            // false), respect the user's explicit choice — only seed
+            // when the key is genuinely missing.
+            guard grammar["inline_enabled"] == nil else { return }
+            grammar["inline_enabled"] = true
+            prefs["grammar"] = grammar
+            struct Update: Encodable { let preferences: AnyJSON }
+            let uid = try await client.auth.session.user.id.uuidString
+            try await client
+                .from("users")
+                .update(Update(preferences: PreferencesEncoding.anyJSON(from: prefs)))
+                .eq("id", value: uid)
+                .execute()
+            homeLog.info("seeded grammar.inline_enabled=true (legacy-key migration)")
+        } catch {
+            homeLog.info("inline_enabled migration skipped: \(error.localizedDescription, privacy: .public)")
         }
     }
 

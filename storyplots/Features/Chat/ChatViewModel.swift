@@ -111,7 +111,20 @@ final class ChatViewModel {
             }
             self.variantsByMessage = byMessage
 
-            var items = messages.map { MessageItem(message: $0, activeVariant: $0.active_variant_id.flatMap { byID[$0] }) }
+            var items = messages
+                .map { MessageItem(message: $0, activeVariant: $0.active_variant_id.flatMap { byID[$0] }) }
+                // Drop dead placeholders — assistant rows the backend
+                // inserted before the provider returned empty content
+                // (degenerate output detector). Without this filter they
+                // render as ghost bubbles in the middle of the thread,
+                // even though the next real assistant reply followed.
+                .filter { item in
+                    if item.role == .assistant,
+                       item.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        return false
+                    }
+                    return true
+                }
             // Mark the first assistant message as the scenario card iff its
             // body matches `character.scenario` — PersonaLLM persists the
             // chosen scenario as message #0 and renders it as a distinct
