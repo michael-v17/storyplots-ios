@@ -389,26 +389,110 @@ struct HomeView: View {
 
     private var loadingState: some View {
         ScrollView {
-            VStack(spacing: Theme.Spacing.s4) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
                 wordmarkHeader
-                HomeHeaderView(
-                    personaName: nil,
-                    personaPhotoRef: nil,
-                    conversationCount: 0,
-                    onAvatarTap: { showPersonaSheet = true }
-                )
-                LazyVGrid(columns: [
-                    GridItem(.flexible(), spacing: Theme.Spacing.s3),
-                    GridItem(.flexible(), spacing: Theme.Spacing.s3)
-                ], spacing: Theme.Spacing.s3) {
-                    ForEach(0..<6, id: \.self) { _ in
-                        CharacterSkeletonCard()
-                    }
-                }
-                .padding(.horizontal, Theme.Spacing.s4)
+                homeHeaderSkeleton
+                recentStripSkeleton
+                grammarWidgetSkeleton
+                    .padding(.horizontal, Theme.Spacing.s4)
+                yourCastSkeleton
             }
+            .padding(.top, Theme.Spacing.s3)
+            .padding(.bottom, 100)
         }
         .disabled(true)
+    }
+
+    /// Skeleton mirror of `HomeHeaderView`: 56pt avatar circle + three
+    /// stacked text rectangles (greeting / first name / count).
+    private var homeHeaderSkeleton: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.s3) {
+            Circle()
+                .fill(Theme.Color.bg3)
+                .frame(width: 56, height: 56)
+            VStack(alignment: .leading, spacing: 6) {
+                RoundedRectangle(cornerRadius: 5).fill(Theme.Color.bg3).frame(width: 110, height: 12)
+                RoundedRectangle(cornerRadius: 6).fill(Theme.Color.bg3).frame(width: 150, height: 22)
+                RoundedRectangle(cornerRadius: 4).fill(Theme.Color.bg3).frame(width: 80, height: 10)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, Theme.Spacing.s4)
+        .padding(.top, Theme.Spacing.s2)
+        .shimmer()
+    }
+
+    /// Skeleton mirror of `RecentCharactersStrip`: section label rect +
+    /// 5 circular avatars with name labels under each. Horizontal scroll
+    /// is implied by the row going edge-to-edge.
+    private var recentStripSkeleton: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Theme.Color.bg3)
+                .frame(width: 70, height: 12)
+                .padding(.horizontal, Theme.Spacing.s4)
+                .shimmer()
+            HStack(spacing: Theme.Spacing.s3) {
+                ForEach(0..<5, id: \.self) { _ in
+                    VStack(spacing: 6) {
+                        Circle()
+                            .fill(Theme.Color.bg3)
+                            .frame(width: 56, height: 56)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Theme.Color.bg3)
+                            .frame(width: 52, height: 9)
+                    }
+                    .shimmer()
+                }
+            }
+            .padding(.horizontal, Theme.Spacing.s4)
+        }
+    }
+
+    /// Skeleton mirror of `GrammarWidget`: wide rounded card.
+    private var grammarWidgetSkeleton: some View {
+        RoundedRectangle(cornerRadius: Theme.Radius.card)
+            .fill(Theme.Color.bg2)
+            .frame(height: 96)
+            .overlay(
+                HStack(spacing: Theme.Spacing.s3) {
+                    Circle().fill(Theme.Color.bg3).frame(width: 44, height: 44)
+                    VStack(alignment: .leading, spacing: 6) {
+                        RoundedRectangle(cornerRadius: 4).fill(Theme.Color.bg3).frame(width: 140, height: 12)
+                        RoundedRectangle(cornerRadius: 4).fill(Theme.Color.bg3).frame(width: 90, height: 9)
+                    }
+                    Spacer(minLength: 0)
+                    Capsule().fill(Theme.Color.bg3).frame(width: 44, height: 24)
+                }
+                .padding(Theme.Spacing.s3)
+            )
+            .shimmer()
+    }
+
+    /// Skeleton mirror of `castSection`: "YOUR CAST" label rect + grid
+    /// of 6 `CharacterSkeletonCard`s.
+    private var yourCastSkeleton: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
+            HStack {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Theme.Color.bg3)
+                    .frame(width: 80, height: 12)
+                Spacer(minLength: 0)
+                Circle().fill(Theme.Color.bg3).frame(width: 32, height: 32)
+                Circle().fill(Theme.Color.bg3).frame(width: 32, height: 32)
+            }
+            .padding(.horizontal, Theme.Spacing.s4)
+            .shimmer()
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: Theme.Spacing.s3),
+                GridItem(.flexible(), spacing: Theme.Spacing.s3)
+            ], spacing: Theme.Spacing.s3) {
+                ForEach(0..<6, id: \.self) { _ in
+                    CharacterSkeletonCard()
+                }
+            }
+            .padding(.horizontal, Theme.Spacing.s4)
+        }
     }
 
     private func errorState(_ message: String) -> some View {
