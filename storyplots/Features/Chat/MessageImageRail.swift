@@ -16,28 +16,67 @@ struct MessageImageRail: View {
     let onSelect: (GeneratedImage) -> Void
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Spacing.s2) {
-                ForEach(images) { img in
-                    if img.sfw_blocked == true {
-                        sfwBlockedCard
-                    } else {
-                        thumbnail(for: img)
+        // No images yet, just loading → take the full bubble width and
+        // a generous height. Reads as a clear "here's where your image
+        // will land" placeholder rather than a tiny thumbnail off to
+        // the side.
+        if images.isEmpty && isLoading {
+            fullWidthLoadingCard
+                .padding(.top, Theme.Spacing.s2)
+        } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Spacing.s2) {
+                    ForEach(images) { img in
+                        if img.sfw_blocked == true {
+                            sfwBlockedCard
+                        } else {
+                            thumbnail(for: img)
+                        }
+                    }
+                    if isLoading {
+                        compactLoadingCard
                     }
                 }
-                if isLoading {
-                    loadingCard
-                }
+                .padding(.horizontal, Theme.Spacing.s1)
             }
-            .padding(.horizontal, Theme.Spacing.s1)
+            .padding(.top, Theme.Spacing.s2)
         }
-        .padding(.top, Theme.Spacing.s2)
     }
 
-    /// Shimmering placeholder rendered while `/messages/{id}/images` is in
-    /// flight. Matches the thumbnail dimensions so the rail doesn't reflow
-    /// when the real image arrives.
-    private var loadingCard: some View {
+    /// Full-width image-loading placeholder — only used when no images
+    /// have arrived yet. Matches the bubble's horizontal extent so the
+    /// loading state feels intentional, not a tiny chip on the side.
+    private var fullWidthLoadingCard: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .fill(Theme.Color.bg3)
+            VStack(spacing: Theme.Spacing.s2) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 28, weight: .medium))
+                    .foregroundStyle(accent)
+                Text("Generating image…")
+                    .font(Theme.FontStyle.body.weight(.semibold))
+                    .foregroundStyle(Theme.Color.fg)
+                Text("Feel free to keep chatting")
+                    .font(Theme.FontStyle.meta)
+                    .foregroundStyle(Theme.Color.fg2)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 200)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .stroke(accent.opacity(0.5), lineWidth: 1)
+        )
+        .shimmer()
+    }
+
+    /// Smaller loading chip used when at least one image has already
+    /// arrived — keeps the existing horizontal rail rhythm so the user
+    /// can see a second image is in flight without the layout reflowing.
+    private var compactLoadingCard: some View {
         ZStack {
             RoundedRectangle(cornerRadius: Theme.Radius.card)
                 .fill(Theme.Color.bg3)
@@ -48,11 +87,6 @@ struct MessageImageRail: View {
                 Text("Generating…")
                     .font(Theme.FontStyle.timestamp.weight(.semibold))
                     .foregroundStyle(Theme.Color.fg)
-                Text("Feel free to keep chatting")
-                    .font(Theme.FontStyle.timestamp)
-                    .foregroundStyle(Theme.Color.fg2)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, Theme.Spacing.s2)
             }
         }
         .frame(width: 160, height: 160)

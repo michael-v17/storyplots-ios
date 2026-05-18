@@ -427,6 +427,16 @@ struct ChatView: View {
                         }
                     }
                 }
+                // Image generation kicks off → scroll the loading card
+                // into view. Without this the user taps "Generate image"
+                // and sees no feedback because the placeholder lands
+                // below the composer fold.
+                .onChange(of: model.imageRequestState) { _, _ in
+                    guard let last = model.items.last else { return }
+                    withAnimation(Theme.Motion.snappy) {
+                        proxy.scrollTo(last.id, anchor: .bottom)
+                    }
+                }
             }
         }
     }
