@@ -164,6 +164,13 @@ struct ChatView: View {
                     onSend: {
                         let toSend = draft
                         draft = ""
+                        // Drop the keyboard so the just-sent bubble and
+                        // the assistant's reply are immediately visible
+                        // instead of half-hidden behind a 300pt keyboard.
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil, from: nil, for: nil
+                        )
                         model.send(toSend)
                     },
                     onCancel: { model.cancelStream() }
@@ -376,11 +383,36 @@ struct ChatView: View {
                     // behind the floating card.
                     .padding(.bottom, 130)
                 }
+                // Initial scroll: as soon as the first batch of messages
+                // lands, drop the user at the most recent message instead
+                // of the top of the thread.
+                .onChange(of: model.loadState) { _, newState in
+                    guard case .loaded = newState, let last = model.items.last else { return }
+                    DispatchQueue.main.async {
+                        withAnimation(Theme.Motion.snappy) {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    }
+                }
+                // New message inserted (user send, assistant placeholder
+                // from start event, or sibling-conv navigation).
                 .onChange(of: model.items.count) { _, _ in
                     if let last = model.items.last {
                         withAnimation(Theme.Motion.snappy) {
                             proxy.scrollTo(last.id, anchor: .bottom)
                         }
+                    }
+                }
+                // Assistant tokens stream into the last item's body — its
+                // body length grows but items.count doesn't change, so we
+                // also watch the body itself. Keeps the latest content
+                // pinned to the bottom edge while the reply is typing in.
+                .onChange(of: model.items.last?.body) { _, _ in
+                    if let last = model.items.last {
+                        // No animation here — animating every token feels
+                        // jittery; let the bubble grow and the scroll
+                        // tracks it implicitly.
+                        proxy.scrollTo(last.id, anchor: .bottom)
                     }
                 }
                 .onChange(of: showTypingIndicator) { _, isShowing in
