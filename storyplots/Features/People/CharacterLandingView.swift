@@ -17,12 +17,21 @@ struct CharacterLandingView: View {
     @State private var startProgressLabel: String = "Starting…"
     @State private var showHeroFullscreen: Bool = false
     @State private var showConversationsList: Bool = false
+    /// Most recent conversation id with this character — populated on
+    /// appear so we can offer a "Continue last chat" shortcut instead of
+    /// forcing the user to either start a fresh scenario or open the
+    /// list sheet.
+    @State private var mostRecentConversationID: String?
+    @State private var mostRecentConversationPreview: String?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.s6) {
                 hero
                 modePill
+                if let convID = mostRecentConversationID {
+                    continueLastChatCard(conversationID: convID)
+                }
                 if let scenario = character.scenario, !scenario.isEmpty {
                     scenarioCard(scenario)
                 } else {
@@ -98,6 +107,90 @@ struct CharacterLandingView: View {
                 )
             }
             .presentationDetents([.large])
+        }
+        .task { await loadMostRecentConversation() }
+    }
+
+    /// Tappable card that jumps straight into the latest conversation —
+    /// the "I just want to keep talking" shortcut so the user doesn't
+    /// have to start a new scenario or scroll the list every time.
+    private func continueLastChatCard(conversationID: String) -> some View {
+        Button {
+            Haptics.impact(.medium)
+            newConversationID = conversationID
+        } label: {
+            HStack(alignment: .center, spacing: Theme.Spacing.s3) {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(accent)
+                    .frame(width: 36, height: 36)
+                    .background(accent.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Continue last chat")
+                        .font(Theme.FontStyle.body.weight(.semibold))
+                        .foregroundStyle(Theme.Color.fg)
+                    if let preview = mostRecentConversationPreview, !preview.isEmpty {
+                        Text(preview)
+                            .font(Theme.FontStyle.timestamp)
+                            .foregroundStyle(Theme.Color.fg3)
+                            .lineLimit(1)
+                    } else {
+                        Text("Jump straight back in")
+                            .font(Theme.FontStyle.timestamp)
+                            .foregroundStyle(Theme.Color.fg3)
+                    }
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.Color.fg4)
+            }
+            .padding(Theme.Spacing.s3)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.card)
+                    .fill(Theme.Color.bg2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.card)
+                    .stroke(accent.opacity(0.35), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Fetch the user's most recent conversation with this character +
+    /// the last assistant/user message text for a preview snippet.
+    /// Silent fail — if nothing exists or the query errors, the
+    /// continue-last-chat card just doesn't render.
+    private func loadMostRecentConversation() async {
+        do {
+            let session = try await client.auth.session
+            struct Row: Decodable { let id: String; let updated_at: String }
+            let rows: [Row] = try await client
+                .from("conversations")
+                .select("id, updated_at")
+                .eq("user_id", value: session.user.id.uuidString)
+                .eq("character_id", value: character.id)
+                .order("updated_at", ascending: false)
+                .limit(1)
+                .execute()
+                .value
+            guard let row = rows.first else { return }
+            mostRecentConversationID = row.id
+            // Optional: pull the most recent message text for the preview.
+            struct MsgRow: Decodable { let text: String? }
+            let msgs: [MsgRow] = (try? await client
+                .from("messages")
+                .select("text, created_at")
+                .eq("conversation_id", value: row.id)
+                .order("created_at", ascending: false)
+                .limit(1)
+                .execute()
+                .value) ?? []
+            mostRecentConversationPreview = msgs.first?.text?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        } catch {
+            landingLog.info("recent-conv fetch failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
