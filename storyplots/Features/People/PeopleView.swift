@@ -47,7 +47,7 @@ struct PeopleView: View {
                 Text("Characters")
                     .font(.headline)
                     .foregroundStyle(Theme.Color.fg)
-                    .offset(x: -28)
+                    .offset(x: -32)
                     .opacity(navTitleVisible ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.2), value: navTitleVisible)
             }

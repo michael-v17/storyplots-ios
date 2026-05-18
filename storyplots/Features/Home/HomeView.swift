@@ -80,7 +80,7 @@ struct HomeView: View {
                     .scaledToFit()
                     .frame(maxHeight: 22)
                     .accessibilityLabel("StoryPlots")
-                    .offset(x: -28)
+                    .offset(x: -32)
                     .opacity(navWordmarkVisible ? 1.0 : 0.0)
                     .animation(.easeInOut(duration: 0.2), value: navWordmarkVisible)
             }
