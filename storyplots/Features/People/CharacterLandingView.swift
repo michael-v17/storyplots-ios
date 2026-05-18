@@ -125,18 +125,19 @@ struct CharacterLandingView: View {
                     .foregroundStyle(accent)
                     .frame(width: 36, height: 36)
                     .background(accent.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Continue last chat")
                         .font(Theme.FontStyle.body.weight(.semibold))
                         .foregroundStyle(Theme.Color.fg)
                     if let preview = mostRecentConversationPreview, !preview.isEmpty {
                         Text(preview)
-                            .font(Theme.FontStyle.timestamp)
-                            .foregroundStyle(Theme.Color.fg3)
-                            .lineLimit(1)
+                            .font(Theme.FontStyle.meta)
+                            .foregroundStyle(Theme.Color.fg2)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                     } else {
                         Text("Jump straight back in")
-                            .font(Theme.FontStyle.timestamp)
+                            .font(Theme.FontStyle.meta)
                             .foregroundStyle(Theme.Color.fg3)
                     }
                 }
@@ -159,14 +160,17 @@ struct CharacterLandingView: View {
     }
 
     /// Fetch the user's most recent conversation with this character +
-    /// the last assistant/user message text for a preview snippet.
-    /// Silent fail — if nothing exists or the query errors, the
-    /// continue-last-chat card just doesn't render.
+    /// a preview snippet of its latest turn. Assistant messages store
+    /// their body in `message_variants.content` (not `messages.text`),
+    /// so we pull the last several messages and resolve assistant
+    /// previews through the active variant when needed. Silent fail —
+    /// if nothing exists or the query errors, the continue-last-chat
+    /// card just doesn't render.
     private func loadMostRecentConversation() async {
         do {
             let session = try await client.auth.session
-            struct Row: Decodable { let id: String; let updated_at: String }
-            let rows: [Row] = try await client
+            struct ConvRow: Decodable { let id: String }
+            let convRows: [ConvRow] = try await client
                 .from("conversations")
                 .select("id, updated_at")
                 .eq("user_id", value: session.user.id.uuidString)
@@ -175,23 +179,74 @@ struct CharacterLandingView: View {
                 .limit(1)
                 .execute()
                 .value
-            guard let row = rows.first else { return }
-            mostRecentConversationID = row.id
-            // Optional: pull the most recent message text for the preview.
-            struct MsgRow: Decodable { let text: String? }
-            let msgs: [MsgRow] = (try? await client
-                .from("messages")
-                .select("text, created_at")
-                .eq("conversation_id", value: row.id)
-                .order("created_at", ascending: false)
-                .limit(1)
-                .execute()
-                .value) ?? []
-            mostRecentConversationPreview = msgs.first?.text?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let conv = convRows.first else { return }
+            mostRecentConversationID = conv.id
+            mostRecentConversationPreview = await fetchPreviewSnippet(conversationID: conv.id)
         } catch {
             landingLog.info("recent-conv fetch failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    /// Newest-first walk of up to 6 messages. For each, pick the first
+    /// non-empty rendered text: `text` for user/system rows; for
+    /// assistant rows fall back to `active_variant_id` → `content`.
+    /// Returns the first match — usually one query plus one variant
+    /// lookup for the typical case where the latest message is the
+    /// assistant's reply.
+    private func fetchPreviewSnippet(conversationID: String) async -> String? {
+        struct MsgRow: Decodable {
+            let role: String
+            let text: String?
+            let active_variant_id: String?
+        }
+        let msgs: [MsgRow] = (try? await client
+            .from("messages")
+            .select("role, text, active_variant_id, created_at")
+            .eq("conversation_id", value: conversationID)
+            .order("created_at", ascending: false)
+            .limit(6)
+            .execute()
+            .value) ?? []
+
+        // Collect assistant variant ids we'll need.
+        let variantIDs = msgs.compactMap { msg -> String? in
+            guard msg.role == "assistant",
+                  (msg.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  let vid = msg.active_variant_id, !vid.isEmpty
+            else { return nil }
+            return vid
+        }
+        struct VariantRow: Decodable { let id: String; let content: String? }
+        var variantText: [String: String] = [:]
+        if !variantIDs.isEmpty {
+            let variants: [VariantRow] = (try? await client
+                .from("message_variants")
+                .select("id, content")
+                .in("id", values: variantIDs)
+                .execute()
+                .value) ?? []
+            for v in variants {
+                if let c = v.content?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !c.isEmpty {
+                    variantText[v.id] = c
+                }
+            }
+        }
+
+        for msg in msgs {
+            // Direct text wins (user/system rows, or legacy assistants).
+            if let t = msg.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !t.isEmpty {
+                return t
+            }
+            // Otherwise resolve assistant content via the active variant.
+            if msg.role == "assistant",
+               let vid = msg.active_variant_id,
+               let c = variantText[vid] {
+                return c
+            }
+        }
+        return nil
     }
 
     private struct ConversationDestination: Hashable {
